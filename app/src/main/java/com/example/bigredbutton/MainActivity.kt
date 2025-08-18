@@ -2,12 +2,18 @@ package com.example.bigredbutton // Replace with your actual package name
 
 import android.os.Bundle
 import android.os.CountDownTimer
+import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.collection.mutableObjectIntMapOf
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
@@ -17,7 +23,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.bigredbutton.ui.theme.BigRedButtonTheme
+import kotlinx.coroutines.delay
 import kotlin.math.max
+import kotlin.text.substringAfterLast
+import kotlin.text.substringBeforeLast
+
+enum class Screen {
+    Selection,
+    CountdownTimer,
+    Stopwatch
+}
 
 class MainActivity : ComponentActivity() {
 
@@ -29,34 +44,89 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    TimerScreen()
+                    AppNavigator() // Main navigator composable
                 }
             }
         }
     }
 }
 
+// --- App Navigator ---
+@Composable
+fun AppNavigator() {
+    var currentScreen by remember { mutableStateOf(Screen.Selection)}
+
+    when (currentScreen) {
+        Screen.Selection -> SelectionScreen(
+            onCountdownSelected = { currentScreen = Screen.CountdownTimer},
+            onStopwatchSelected = {currentScreen = Screen.Stopwatch}
+            )
+        Screen.CountdownTimer -> CountdownTimerScreen( onNavigateBack = {currentScreen = Screen.Selection})
+        Screen.Stopwatch -> StopwatchScreen(onNavigateBack = {currentScreen = Screen.Selection})
+    }
+}
+
+// --- Selection Screen Composable ---
+@Composable
+fun SelectionScreen(
+    onCountdownSelected: () -> Unit,
+    onStopwatchSelected: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "Choose Timer Type",
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(bottom = 32.dp)
+        )
+        Button(
+            onClick = onCountdownSelected,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        ) {
+            Text("Countdown Timer")
+        }
+        Button(
+            onClick = onStopwatchSelected,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        ) {
+            Text("Stopwatch")
+        }
+    }
+}
+
+// --- Countdown Timer Screen Composable ---
+
 // Initial time for the timer (e.g., 2 minutes)
 const val DEFAULT_INITIAL_MINUTES = 2L
 
-
+@OptIn(ExperimentalMaterial3Api::class) // For OutlinedTextField
 @Composable
-fun TimerScreen() {
+fun CountdownTimerScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifier) {
     // Input state for user-defined minutes
-    var inputMinutes by remember { mutableStateOf(DEFAULT_INITIAL_MINUTES.toString())}
-    var initialTimeMillis by remember { mutableStateOf(DEFAULT_INITIAL_MINUTES * 60 * 1000L)}
+    var inputMinutes by remember { mutableStateOf(DEFAULT_INITIAL_MINUTES.toString()) }
+    var initialTimeMillis by remember { mutableStateOf(DEFAULT_INITIAL_MINUTES * 60 * 1000L) }
 
     // Timer state
     var timeLeftInMillis by remember { mutableStateOf(initialTimeMillis) }
     var isTimerRunning by remember { mutableStateOf(false) }
     var countDownTimer: CountDownTimer? by remember { mutableStateOf(null) }
 
-    val formattedTime = formatTime(timeLeftInMillis)
+    val formattedTime = formatMillisecondsToTime(timeLeftInMillis) // Using generic formatter
     val focusManager = LocalFocusManager.current
 
     fun startTimer() {
         countDownTimer?.cancel() // Cancel any existing timer
-        countDownTimer = object : CountDownTimer(timeLeftInMillis, 1000) {
+        countDownTimer = object : CountDownTimer(timeLeftInMillis, 100) {
             override fun onTick(millisUntilFinished: Long) {
                 timeLeftInMillis = millisUntilFinished
             }
@@ -102,88 +172,229 @@ fun TimerScreen() {
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        // Input section for setting timer duration
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(bottom = 24.dp)
-        ) {
-            OutlinedTextField(
-                value = inputMinutes,
-                onValueChange = {newValue ->
-                    // Allow only digits and limit length if desired
-                    if (newValue.all { it.isDigit() } && newValue.length <= 3) {
-                        inputMinutes = newValue
+    // Added Scaffold for TopAppBar
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Countdown Timer") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
                     }
-                },
-                label = { Text("Minutes") },
-                keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number,
-                        imeAction = ImeAction.Done // Show "Done" on keyboard
-                ),
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-                enabled = !isTimerRunning // Disable input while timer is running
-            )
-            Button(
-                onClick = {setTimerDuration()},
-                enabled = !isTimerRunning // Disable set while timer is running
-            ) {
-                Text("Set")
-            }
+                })
         }
-        Text(
-            text = formattedTime,
-            fontSize = 72.sp,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.height(32.dp))
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) { paddingValues ->
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(paddingValues) // Apply padding from Scaffold
+                .padding(16.dp), // Additional screen padding
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Button(
-                onClick = {
-                    if (isTimerRunning) {
-                        pauseTimer()
-                    } else {
-                        if (timeLeftInMillis > 0) { // Only start if there's time left
-                            startTimer()
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(bottom = 24.dp)
+            ) {
+                OutlinedTextField(
+                    value = inputMinutes,
+                    onValueChange = { newValue ->
+                        if (newValue.all { it.isDigit() } && newValue.length <= 3) {
+                            inputMinutes = newValue
                         }
-                    }
-                },
-                enabled = timeLeftInMillis > 0 // Disable start/pause if timer is at 0
-            ) {
-                Text(if (isTimerRunning) "Pause" else "Start")
+                    },
+                    label = { Text("Minutes") },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done
+                    ),
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                    enabled = !isTimerRunning
+                )
+                Button(
+                    onClick = { setTimerDuration() },
+                    enabled = !isTimerRunning
+                ) {
+                    Text("Set")
+                }
             }
-            Button(
-                onClick = { resetTimer() }
-            ) {
-                Text("Reset")
+
+            Text(
+                text = formattedTime,
+                fontSize = 72.sp,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp) // Added padding for tenths of a second
+            )
+            // Display tenths of a second for countdown
+            Text(
+                text = String.format(".%01d", (timeLeftInMillis % 1000) / 100),
+                fontSize = 24.sp,
+                color = MaterialTheme.colorScheme.secondary
+            )
+            Spacer(modifier = Modifier.height(32.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Button(
+                    onClick = {
+                        if (isTimerRunning) pauseTimer() else {
+                            if (timeLeftInMillis > 0) startTimer()
+                        }
+                    },
+                    enabled = timeLeftInMillis > 0
+                ) {
+                    Text(if (isTimerRunning) "Pause" else "Start")
+                }
+                Button(onClick = { resetTimer() }) {
+                    Text("Reset")
+                }
             }
         }
     }
 }
 
-// Helper function to format milliseconds into MM:SS
-fun formatTime(millis: Long): String {
-    val minutes = (millis / 1000) / 60
-    val seconds = (millis / 1000) % 60
+// --- Stopwatch Screen Composable ---
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StopwatchScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifier) {
+    var elapsedTime by remember { mutableStateOf(0L) } // Time in milliseconds
+    var isRunning by remember { mutableStateOf(false) }
+    // Store the time when the stopwatch was started, or the point from which it was resumed
+    var timeReference by remember { mutableStateOf(0L) }
+
+    // This LaunchedEffect will run the stopwatch logic when isRunning is true
+    LaunchedEffect(isRunning) {
+        if (isRunning) {
+            // If starting from 0 or resuming, set the reference point
+            if (elapsedTime == 0L) { // Starting fresh or after reset
+                timeReference = SystemClock.elapsedRealtime()
+            } else { // Resuming
+                // Adjust timeReference to account for the already elapsed time before pausing
+                timeReference = SystemClock.elapsedRealtime() - elapsedTime
+            }
+
+            while (isRunning) {
+                elapsedTime = SystemClock.elapsedRealtime() - timeReference
+                delay(10) // Update UI roughly every 10 milliseconds for smooth display
+            }
+        }
+    }
+
+    fun startStopwatch() {
+        isRunning = true
+    }
+
+    fun pauseStopwatch() {
+        isRunning = false
+    }
+
+    fun resetStopwatch() {
+        isRunning = false
+        elapsedTime = 0L
+    }
+
+    val formattedStopwatchTime = formatMillisecondsToTimeWithMillis(elapsedTime)
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Stopwatch") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(paddingValues) // Apply padding from Scaffold
+                .padding(16.dp),      // Additional screen padding
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = formattedStopwatchTime.substringBeforeLast('.'), // MM:SS
+                fontSize = 72.sp,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = "." + formattedStopwatchTime.substringAfterLast('.', "00"), // .ss (milliseconds)
+                fontSize = 36.sp,
+                color = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.padding(start = 4.dp) // Align decimal better
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Button(
+                    onClick = {
+                        if (isRunning) {
+                            pauseStopwatch()
+                        } else {
+                            startStopwatch()
+                        }
+                    }
+                ) {
+                    Text(if (isRunning) "Pause" else if (elapsedTime > 0L) "Resume" else "Start")
+                }
+                Button(
+                    onClick = { resetStopwatch() },
+                    enabled = elapsedTime > 0L // Enable reset only if time has passed or it's running
+                ) {
+                    Text("Reset")
+                }
+            }
+        }
+    }
+}
+
+// --- Helper function to format milliseconds into MM:SS ---
+// Used by Countdown Timer
+fun formatMillisecondsToTime(millis: Long): String {
+    val totalSeconds = millis / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
     return String.format("%02d:%02d", minutes, seconds)
 }
 
+// --- Helper function to format milliseconds into MM:SS.mm (for Stopwatch) ---
+// mm represents hundredths of a second
+fun formatMillisecondsToTimeWithMillis(millis: Long): String {
+    val totalSeconds = millis / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    val hundredths = (millis % 1000) / 10 // Get hundredths of a second
+    return String.format("%02d:%02d.%02d", minutes, seconds, hundredths)
+}
 
 
-@Preview(showBackground = true)
+// --- Previews (Optional, but good for development) ---
+@Preview(showBackground = true, name = "Selection Screen Preview")
 @Composable
-fun DefaultPreview() {
+fun SelectionScreenPreview() {
     BigRedButtonTheme {
-        TimerScreen()
+        SelectionScreen(onCountdownSelected = {}, onStopwatchSelected = {})
+    }
+}
+
+@Preview(showBackground = true, name = "Countdown Timer Preview")
+@Composable
+fun CountdownTimerScreenPreview() {
+    BigRedButtonTheme {
+        CountdownTimerScreen(onNavigateBack = {})
+    }
+}
+
+@Preview(showBackground = true, name = "Stopwatch Preview")
+@Composable
+fun StopwatchScreenPreview() {
+    BigRedButtonTheme {
+        StopwatchScreen(onNavigateBack = {})
     }
 }
