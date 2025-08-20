@@ -5,14 +5,34 @@ import android.os.CountDownTimer
 import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.collection.mutableObjectIntMapOf
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,12 +44,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.bigredbutton.ui.theme.BigRedButtonTheme
 import kotlinx.coroutines.delay
+import java.util.Locale
 import kotlin.math.max
-import kotlin.text.substringAfterLast
-import kotlin.text.substringBeforeLast
 
 enum class Screen {
-    Selection,
+    Home,
+    GamesSelection,
     CountdownTimer,
     Stopwatch
 }
@@ -54,52 +74,90 @@ class MainActivity : ComponentActivity() {
 // --- App Navigator ---
 @Composable
 fun AppNavigator() {
-    var currentScreen by remember { mutableStateOf(Screen.Selection)}
+    var currentScreen by remember { mutableStateOf(Screen.Home) }
 
     when (currentScreen) {
-        Screen.Selection -> SelectionScreen(
-            onCountdownSelected = { currentScreen = Screen.CountdownTimer},
-            onStopwatchSelected = {currentScreen = Screen.Stopwatch}
-            )
-        Screen.CountdownTimer -> CountdownTimerScreen( onNavigateBack = {currentScreen = Screen.Selection})
-        Screen.Stopwatch -> StopwatchScreen(onNavigateBack = {currentScreen = Screen.Selection})
+        Screen.Home -> HomeScreen(
+            onConnectButtons = { /* TODO: Implement Connect Buttons logic */ },
+            onGames = { currentScreen = Screen.GamesSelection }
+        )
+        Screen.GamesSelection -> GamesSelectionScreen(
+            onCountdownSelected = { currentScreen = Screen.CountdownTimer },
+            onStopwatchSelected = { currentScreen = Screen.Stopwatch },
+            onNavigateBack = { currentScreen = Screen.Home }
+        )
+        Screen.CountdownTimer -> CountdownTimerScreen(
+            onNavigateBack = { currentScreen = Screen.GamesSelection }
+        )
+        Screen.Stopwatch -> StopwatchScreen(
+            onNavigateBack = { currentScreen = Screen.GamesSelection }
+        )
     }
 }
 
-// --- Selection Screen Composable ---
 @Composable
-fun SelectionScreen(
-    onCountdownSelected: () -> Unit,
-    onStopwatchSelected: () -> Unit,
+fun HomeScreen(
+    onConnectButtons: () -> Unit,
+    onGames: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "Choose Timer Type",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(bottom = 32.dp)
-        )
+        Text("Welcome to Big Red Button!", style = MaterialTheme.typography.headlineMedium)
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = onConnectButtons,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+        ) {
+            Text("Connect Buttons")
+        }
+        Button(
+            onClick = onGames,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Games")
+        }
+    }
+}
+
+// --- Selection Screen Composable ---
+@Composable
+fun GamesSelectionScreen(
+    onCountdownSelected: () -> Unit,
+    onStopwatchSelected: () -> Unit,
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         Button(
             onClick = onCountdownSelected,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
         ) {
-            Text("Countdown Timer")
+            Text("Countdown")
         }
         Button(
             onClick = onStopwatchSelected,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
         ) {
             Text("Stopwatch")
+        }
+        Button(
+            onClick = onNavigateBack,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Back")
         }
     }
 }
@@ -114,10 +172,10 @@ const val DEFAULT_INITIAL_MINUTES = 2L
 fun CountdownTimerScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifier) {
     // Input state for user-defined minutes
     var inputMinutes by remember { mutableStateOf(DEFAULT_INITIAL_MINUTES.toString()) }
-    var initialTimeMillis by remember { mutableStateOf(DEFAULT_INITIAL_MINUTES * 60 * 1000L) }
+    var initialTimeMillis by remember { mutableLongStateOf(DEFAULT_INITIAL_MINUTES * 60 * 1000L) }
 
     // Timer state
-    var timeLeftInMillis by remember { mutableStateOf(initialTimeMillis) }
+    var timeLeftInMillis by remember { mutableLongStateOf(initialTimeMillis) }
     var isTimerRunning by remember { mutableStateOf(false) }
     var countDownTimer: CountDownTimer? by remember { mutableStateOf(null) }
 
@@ -179,7 +237,7 @@ fun CountdownTimerScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifi
                 title = { Text("Countdown Timer") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 })
         }
@@ -229,7 +287,7 @@ fun CountdownTimerScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifi
             )
             // Display tenths of a second for countdown
             Text(
-                text = String.format(".%01d", (timeLeftInMillis % 1000) / 100),
+                text = String.format(Locale.getDefault(), ".%01d", (timeLeftInMillis % 1000) / 100),
                 fontSize = 24.sp,
                 color = MaterialTheme.colorScheme.secondary
             )
@@ -257,20 +315,20 @@ fun CountdownTimerScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifi
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StopwatchScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifier) {
-    var elapsedTime by remember { mutableStateOf(0L) } // Time in milliseconds
+    var elapsedTime by remember { mutableLongStateOf(0L) } // Time in milliseconds
     var isRunning by remember { mutableStateOf(false) }
     // Store the time when the stopwatch was started, or the point from which it was resumed
-    var timeReference by remember { mutableStateOf(0L) }
+    var timeReference by remember { mutableLongStateOf(0L) }
 
     // This LaunchedEffect will run the stopwatch logic when isRunning is true
     LaunchedEffect(isRunning) {
         if (isRunning) {
             // If starting from 0 or resuming, set the reference point
-            if (elapsedTime == 0L) { // Starting fresh or after reset
-                timeReference = SystemClock.elapsedRealtime()
+            timeReference = if (elapsedTime == 0L) { // Starting fresh or after reset
+                SystemClock.elapsedRealtime()
             } else { // Resuming
                 // Adjust timeReference to account for the already elapsed time before pausing
-                timeReference = SystemClock.elapsedRealtime() - elapsedTime
+                SystemClock.elapsedRealtime() - elapsedTime
             }
 
             while (isRunning) {
@@ -301,7 +359,7 @@ fun StopwatchScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifier) {
                 title = { Text("Stopwatch") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -360,7 +418,7 @@ fun formatMillisecondsToTime(millis: Long): String {
     val totalSeconds = millis / 1000
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
-    return String.format("%02d:%02d", minutes, seconds)
+    return String.format(Locale.getDefault(),"%02d:%02d", minutes, seconds)
 }
 
 // --- Helper function to format milliseconds into MM:SS.mm (for Stopwatch) ---
@@ -370,7 +428,7 @@ fun formatMillisecondsToTimeWithMillis(millis: Long): String {
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
     val hundredths = (millis % 1000) / 10 // Get hundredths of a second
-    return String.format("%02d:%02d.%02d", minutes, seconds, hundredths)
+    return String.format(Locale.getDefault(),"%02d:%02d.%02d", minutes, seconds, hundredths)
 }
 
 
@@ -379,7 +437,7 @@ fun formatMillisecondsToTimeWithMillis(millis: Long): String {
 @Composable
 fun SelectionScreenPreview() {
     BigRedButtonTheme {
-        SelectionScreen(onCountdownSelected = {}, onStopwatchSelected = {})
+        GamesSelectionScreen(onCountdownSelected = {}, onStopwatchSelected = {}, onNavigateBack = {})
     }
 }
 
