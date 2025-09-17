@@ -1,10 +1,15 @@
 package com.example.bigredbutton // Replace with your actual package name
 
+import android.Manifest
+import android.app.Application
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,18 +35,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.bigredbutton.ui.theme.BigRedButtonTheme
 import kotlinx.coroutines.delay
 import java.util.Locale
@@ -51,20 +60,64 @@ enum class Screen {
     Home,
     GamesSelection,
     CountdownTimer,
-    Stopwatch
+    Stopwatch,
+    ConnectButtons
 }
 
 class MainActivity : ComponentActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                arrayOf(
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                    Manifest.permission.BLUETOOTH_SCAN,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                )
+            } else {
+                arrayOf(
+                    Manifest.permission.BLUETOOTH,
+                    Manifest.permission.BLUETOOTH_ADMIN,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                )
+            }
+            val permissionState = remember { mutableStateOf(false) }
+            val activity = this
+            val requestPermissionLauncher = rememberUpdatedState(
+                registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
+                    permissionState.value = results.values.all { it }
+                }
+            )
+            LaunchedEffect(Unit) {
+                val allGranted = permissions.all {
+                    ContextCompat.checkSelfPermission(activity, it) == PackageManager.PERMISSION_GRANTED
+                }
+                if (!allGranted) {
+                    requestPermissionLauncher.value.launch(permissions)
+                } else {
+                    permissionState.value = true
+                }
+            }
             BigRedButtonTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AppNavigator() // Main navigator composable
+                    if (permissionState.value) {
+                        AppNavigator()
+                    } else {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text("Bluetooth and Location permissions are required.")
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = { requestPermissionLauncher.value.launch(permissions) }) {
+                                Text("Grant Permissions")
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -75,11 +128,18 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppNavigator() {
     var currentScreen by remember { mutableStateOf(Screen.Home) }
-
+    val context = LocalContext.current
+    val bluetoothViewModel: BluetoothViewModel = viewModel(
+        factory = BluetoothViewModelFactory(context.applicationContext as Application)
+    )
     when (currentScreen) {
         Screen.Home -> HomeScreen(
-            onConnectButtons = { /* TODO: Implement Connect Buttons logic */ },
+            onConnectButtons = { currentScreen = Screen.ConnectButtons },
             onGames = { currentScreen = Screen.GamesSelection }
+        )
+        Screen.ConnectButtons -> ConnectButtonsScreen(
+            onNavigateBack = { currentScreen = Screen.Home },
+            viewModel = bluetoothViewModel
         )
         Screen.GamesSelection -> GamesSelectionScreen(
             onCountdownSelected = { currentScreen = Screen.CountdownTimer },
@@ -108,7 +168,7 @@ fun HomeScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Welcome to Big Red Button!", style = MaterialTheme.typography.headlineMedium)
+        Text("Welcome to Big Red Button Game Center App!", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
@@ -314,7 +374,7 @@ fun CountdownTimerScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifi
 // --- Stopwatch Screen Composable ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StopwatchScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifier) {
+fun StopwatchScreen(onNavigateBack: () -> Unit) {
     var elapsedTime by remember { mutableLongStateOf(0L) } // Time in milliseconds
     var isRunning by remember { mutableStateOf(false) }
     // Store the time when the stopwatch was started, or the point from which it was resumed
@@ -364,47 +424,30 @@ fun StopwatchScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifier) {
                 }
             )
         }
-    ) { paddingValues ->
+    ) { padding ->
         Column(
-            modifier = modifier
+            modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues) // Apply padding from Scaffold
-                .padding(16.dp),      // Additional screen padding
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .padding(padding)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = formattedStopwatchTime.substringBeforeLast('.'), // MM:SS
+                text = formattedStopwatchTime,
                 fontSize = 72.sp,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 16.dp)
             )
-            Text(
-                text = "." + formattedStopwatchTime.substringAfterLast('.', "00"), // .ss (milliseconds)
-                fontSize = 36.sp,
-                color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.padding(start = 4.dp) // Align decimal better
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Button(
                     onClick = {
-                        if (isRunning) {
-                            pauseStopwatch()
-                        } else {
-                            startStopwatch()
-                        }
+                        if (isRunning) pauseStopwatch() else startStopwatch()
                     }
                 ) {
-                    Text(if (isRunning) "Pause" else if (elapsedTime > 0L) "Resume" else "Start")
+                    Text(if (isRunning) "Pause" else "Start")
                 }
-                Button(
-                    onClick = { resetStopwatch() },
-                    enabled = elapsedTime > 0L // Enable reset only if time has passed or it's running
-                ) {
+                Button(onClick = { resetStopwatch() }) {
                     Text("Reset")
                 }
             }
@@ -412,47 +455,104 @@ fun StopwatchScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifier) {
     }
 }
 
-// --- Helper function to format milliseconds into MM:SS ---
-// Used by Countdown Timer
+// --- Utility Functions ---
 fun formatMillisecondsToTime(millis: Long): String {
     val totalSeconds = millis / 1000
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
-    return String.format(Locale.getDefault(),"%02d:%02d", minutes, seconds)
+    return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
 }
 
-// --- Helper function to format milliseconds into MM:SS.mm (for Stopwatch) ---
-// mm represents hundredths of a second
 fun formatMillisecondsToTimeWithMillis(millis: Long): String {
     val totalSeconds = millis / 1000
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
-    val hundredths = (millis % 1000) / 10 // Get hundredths of a second
-    return String.format(Locale.getDefault(),"%02d:%02d.%02d", minutes, seconds, hundredths)
+    val milliseconds = (millis % 1000) / 10
+    return String.format(Locale.getDefault(), "%02d:%02d.%02d", minutes, seconds, milliseconds)
 }
 
-
-// --- Previews (Optional, but good for development) ---
-@Preview(showBackground = true, name = "Selection Screen Preview")
+// --- ConnectButtonsScreen Composable ---
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SelectionScreenPreview() {
-    BigRedButtonTheme {
-        GamesSelectionScreen(onCountdownSelected = {}, onStopwatchSelected = {}, onNavigateBack = {})
+fun ConnectButtonsScreen(onNavigateBack: () -> Unit, viewModel: BluetoothViewModel) {
+    val buttonSlots = listOf("Button 1", "Button 2", "Button 3")
+    var selectedSlotIndex by remember { mutableIntStateOf(-1) }
+    val discoveredDevices = viewModel.discoveredDevices
+    val isDiscovering = viewModel.isDiscovering
+    val errorMessage = viewModel.errorMessage
+    val deviceConnections = viewModel.deviceConnections
+
+    LaunchedEffect(Unit) {
+        viewModel.startDiscovery()
     }
-}
 
-@Preview(showBackground = true, name = "Countdown Timer Preview")
-@Composable
-fun CountdownTimerScreenPreview() {
-    BigRedButtonTheme {
-        CountdownTimerScreen(onNavigateBack = {})
-    }
-}
-
-@Preview(showBackground = true, name = "Stopwatch Preview")
-@Composable
-fun StopwatchScreenPreview() {
-    BigRedButtonTheme {
-        StopwatchScreen(onNavigateBack = {})
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Connect Buttons") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Top,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("Scan for Bluetooth devices named: $BLUETOOTH_DEVICE_NAME", style = MaterialTheme.typography.bodyLarge)
+            if (isDiscovering) Text("Scanning...")
+            if (errorMessage != null) Text(errorMessage, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+            Spacer(modifier = Modifier.height(24.dp))
+            buttonSlots.forEachIndexed { index, slotName ->
+                val connectedDevice = deviceConnections[index]?.remoteDevice
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(slotName, modifier = Modifier.weight(1f))
+                    val deviceName = try { connectedDevice?.name ?: "Not connected" } catch (e: SecurityException) { "Unknown" }
+                    Text(deviceName, modifier = Modifier.weight(1f))
+                    if (connectedDevice == null) {
+                        Button(onClick = { selectedSlotIndex = index }) {
+                            Text("Assign")
+                        }
+                    } else {
+                        Button(onClick = { viewModel.disconnectFromSlot(index) }) {
+                            Text("Disconnect")
+                        }
+                    }
+                }
+            }
+            if (selectedSlotIndex != -1) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Select device for ${buttonSlots[selectedSlotIndex]}")
+                discoveredDevices.forEach { device ->
+                    val deviceName = try { device.name ?: device.address } catch (e: SecurityException) { "Unknown" }
+                    Button(
+                        onClick = {
+                            viewModel.connectToDevice(selectedSlotIndex, device)
+                            selectedSlotIndex = -1
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                    ) {
+                        Text(deviceName)
+                    }
+                }
+                Button(onClick = { selectedSlotIndex = -1 }, modifier = Modifier.padding(top = 8.dp)) {
+                    Text("Cancel")
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = { viewModel.startDiscovery() }, enabled = !isDiscovering) {
+                Text("Rescan")
+            }
+        }
     }
 }
