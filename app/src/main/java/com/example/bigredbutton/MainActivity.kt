@@ -1,6 +1,10 @@
 package com.example.bigredbutton // Replace with your actual package name
 
+import android.Manifest
+//import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.SystemClock
@@ -39,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,9 +55,15 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.example.bigredbutton.ui.theme.BigRedButtonTheme
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.IOException
 import java.util.Locale
+import java.util.UUID
 import kotlin.math.max
 
 enum class Screen {
@@ -162,16 +173,73 @@ fun ConnectButtonsScreen(
     onOpenBluetoothSettings: (android.content.Context) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Placeholder connection status variables
-    val isButton1Connected = false
-    val isButton2Connected = false
-    val isButton3Connected = false
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val bluetoothPermissionGranted = remember {
+        if (android.os.Build.VERSION.SDK_INT >= 31) {
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.BLUETOOTH_CONNECT
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true // Always granted on pre-API 31
+        }
+    }
+    //val bluetoothAdapter = if (bluetoothPermissionGranted) BluetoothAdapter.getDefaultAdapter() else null
+    val bluetoothManager = context.getSystemService(android.bluetooth.BluetoothManager::class.java)
+    val bluetoothAdapter = if (bluetoothPermissionGranted) bluetoothManager?.adapter else null
+    val pairedDevices = remember {
+        bluetoothAdapter?.bondedDevices?.filter {
+            it.name == "BigRedB_1" || it.name == "BigRedB_2" || it.name == "BigRedB_3"
+        } ?: emptyList()
+    }
+    val sppUuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 
-    // Added Scaffold for TopAppBar
+    // State for each device
+    data class DeviceState(
+        val device: BluetoothDevice,
+        val isConnected: Boolean = false,
+        val isConnecting: Boolean = false,
+        val socket: java.io.Closeable? = null
+    )
+    val deviceStates = remember { mutableStateOf(pairedDevices.map { DeviceState(it) }) }
+
+    // Helper to update device state by address
+    fun updateDeviceState(address: String, update: (DeviceState) -> DeviceState) {
+        deviceStates.value = deviceStates.value.map {
+            if (it.device.address == address) update(it) else it
+        }
+    }
+
+    // Connect/disconnect logic
+    suspend fun connectToDevice(device: BluetoothDevice) {
+        updateDeviceState(device.address) { it.copy(isConnecting = true) }
+        withContext(Dispatchers.IO) {
+            try {
+                val socket = device.createRfcommSocketToServiceRecord(sppUuid)
+                bluetoothAdapter?.cancelDiscovery()
+                socket.connect()
+                updateDeviceState(device.address) { it.copy(isConnected = true, isConnecting = false, socket = socket) }
+            } catch (_: IOException) {
+                updateDeviceState(device.address) { it.copy(isConnected = false, isConnecting = false, socket = null) }
+            }
+        }
+    }
+    suspend fun disconnectFromDevice(device: BluetoothDevice) {
+        withContext(Dispatchers.IO) {
+            val state = deviceStates.value.find { it.device.address == device.address }
+            try {
+                state?.socket?.close()
+            } catch (_: Exception) {}
+            updateDeviceState(device.address) { it.copy(isConnected = false, isConnecting = false, socket = null) }
+        }
+    }
+
+    // UI
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Connect Buttons")},
+                title = { Text("Connect Buttons") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -179,7 +247,6 @@ fun ConnectButtonsScreen(
                 })
         }
     ) { paddingValues ->
-        val context = LocalContext.current
         Column(
             modifier = modifier
                 .fillMaxWidth()
@@ -187,22 +254,20 @@ fun ConnectButtonsScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.SpaceEvenly,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Button 1 ready")
-                    StatusIcon(isConnected = isButton1Connected)
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Button 2 ready")
-                    StatusIcon(isConnected = isButton2Connected)
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Button 3 ready")
-                    StatusIcon(isConnected = isButton3Connected)
+            deviceStates.value.forEach { state ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(8.dp)) {
+                    Text(state.device.name)
+                    StatusIcon(isConnected = state.isConnected)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    if (state.isConnected) {
+                        Button(onClick = { coroutineScope.launch { disconnectFromDevice(state.device) } }, enabled = !state.isConnecting) {
+                            Text("Disconnect")
+                        }
+                    } else {
+                        Button(onClick = { coroutineScope.launch { connectToDevice(state.device) } }, enabled = !state.isConnecting) {
+                            Text(if (state.isConnecting) "Connecting..." else "Connect")
+                        }
+                    }
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
@@ -210,7 +275,6 @@ fun ConnectButtonsScreen(
                 Text("Open Bluetooth Settings")
             }
         }
-        // Column for additional information or actions can be added here
     }
 }
 
@@ -487,7 +551,7 @@ fun formatMillisecondsToTime(millis: Long): String {
     val totalSeconds = millis / 1000
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
-    return String.format("%02d:%02d", minutes, seconds)
+    return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
 }
 
 fun formatMillisecondsToTimeWithMillis(millis: Long): String {
@@ -495,7 +559,7 @@ fun formatMillisecondsToTimeWithMillis(millis: Long): String {
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
     val milliseconds = (millis % 1000) / 10 // Get tenths of a second
-    return String.format("%02d:%02d.%01d", minutes, seconds, milliseconds)
+    return String.format(Locale.getDefault(), "%02d:%02d.%01d", minutes, seconds, milliseconds)
 }
 
 // --- Preview Composable ---
