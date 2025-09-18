@@ -36,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusModifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -51,7 +52,8 @@ enum class Screen {
     Home,
     GamesSelection,
     CountdownTimer,
-    Stopwatch
+    Stopwatch,
+    ConnectButtons
 }
 
 class MainActivity : ComponentActivity() {
@@ -78,8 +80,11 @@ fun AppNavigator() {
 
     when (currentScreen) {
         Screen.Home -> HomeScreen(
-            onConnectButtons = { /* TODO: Implement Connect Buttons logic */ },
+            onConnectButtons = { currentScreen = Screen.ConnectButtons },
             onGames = { currentScreen = Screen.GamesSelection }
+        )
+        Screen.ConnectButtons -> ConnectButtonsScreen(
+            onNavigateBack = { currentScreen = Screen.Home }
         )
         Screen.GamesSelection -> GamesSelectionScreen(
             onCountdownSelected = { currentScreen = Screen.CountdownTimer },
@@ -126,6 +131,56 @@ fun HomeScreen(
     }
 }
 
+// --- Connect Buttons Screen Composable ---
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ConnectButtonsScreen(
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier
+)
+{
+    // Added Scaffold for TopAppBar
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Connect Buttons")},
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                })
+        }
+    ) { paddingValues ->
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(paddingValues)
+                .padding(16.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            Text("Button 1 ready")
+            Text("Button 2 ready")
+            Text("Button 3 ready")
+
+        }
+
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(paddingValues) // Apply padding from Scaffold
+                .padding(16.dp), // Additional screen padding
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("Connect Buttons Screen", style = MaterialTheme.typography.headlineMedium)
+            Spacer(modifier = Modifier.height(24.dp))
+            Text("Functionality to connect external buttons will be implemented here.", style = MaterialTheme.typography.bodyMedium)
+        }
+
+    }
+
+}
 // --- Selection Screen Composable ---
 @Composable
 fun GamesSelectionScreen(
@@ -163,7 +218,6 @@ fun GamesSelectionScreen(
 }
 
 // --- Countdown Timer Screen Composable ---
-
 // Initial time for the timer (e.g., 2 minutes)
 const val DEFAULT_INITIAL_MINUTES = 2L
 
@@ -438,6 +492,14 @@ fun formatMillisecondsToTimeWithMillis(millis: Long): String {
 fun HomeScreenPreview() {
     BigRedButtonTheme {
         HomeScreen(onConnectButtons = {}, onGames = {})
+    }
+}
+
+@Preview(showBackground = true, name = "Connect Buttons Screen Preview")
+@Composable
+fun ConnectButtonsScreenPreview() {
+    BigRedButtonTheme {
+        ConnectButtonsScreen(onNavigateBack = {})
     }
 }
 
