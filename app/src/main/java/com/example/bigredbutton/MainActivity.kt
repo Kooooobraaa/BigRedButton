@@ -1,8 +1,10 @@
 package com.example.bigredbutton // Replace with your actual package name
 
+import android.content.Intent
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.SystemClock
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -16,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -42,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -89,7 +91,11 @@ fun AppNavigator() {
             onGames = { currentScreen = Screen.GamesSelection }
         )
         Screen.ConnectButtons -> ConnectButtonsScreen(
-            onNavigateBack = { currentScreen = Screen.Home }
+            onNavigateBack = { currentScreen = Screen.Home },
+            onOpenBluetoothSettings = { context ->
+                val intent = Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
+                context.startActivity(intent)
+            }
         )
         Screen.GamesSelection -> GamesSelectionScreen(
             onCountdownSelected = { currentScreen = Screen.CountdownTimer },
@@ -153,6 +159,7 @@ fun StatusIcon(isConnected: Boolean, modifier: Modifier = Modifier) {
 @Composable
 fun ConnectButtonsScreen(
     onNavigateBack: () -> Unit,
+    onOpenBluetoothSettings: (android.content.Context) -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Placeholder connection status variables
@@ -172,47 +179,41 @@ fun ConnectButtonsScreen(
                 })
         }
     ) { paddingValues ->
-        Row(
+        val context = LocalContext.current
+        Column(
             modifier = modifier
                 .fillMaxWidth()
                 .padding(paddingValues)
                 .padding(16.dp),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.SpaceEvenly,
-        ) {
-            Column(modifier = modifier.border(1.dp, Color.Gray).padding(2.dp),
-                horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Button 1 ready")
-                StatusIcon(isConnected = isButton1Connected)
-            }
-            Column(modifier = modifier.border(1.dp, Color.Gray).padding(2.dp),
-                horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Button 2 ready")
-                StatusIcon(isConnected = isButton2Connected)
-            }
-            Column(modifier = modifier.border(1.dp, Color.Gray).padding(2.dp),
-                horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Button 3 ready")
-                StatusIcon(isConnected = isButton3Connected)
-            }
-        }
-
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(paddingValues) // Apply padding from Scaffold
-                .padding(16.dp), // Additional screen padding
-            verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Connect Buttons Screen", style = MaterialTheme.typography.headlineMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Button 1 ready")
+                    StatusIcon(isConnected = isButton1Connected)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Button 2 ready")
+                    StatusIcon(isConnected = isButton2Connected)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Button 3 ready")
+                    StatusIcon(isConnected = isButton3Connected)
+                }
+            }
             Spacer(modifier = Modifier.height(24.dp))
-            Text("Functionality to connect external buttons will be implemented here.", style = MaterialTheme.typography.bodyMedium)
+            Button(onClick = { onOpenBluetoothSettings(context) }) {
+                Text("Open Bluetooth Settings")
+            }
         }
-
+        // Column for additional information or actions can be added here
     }
-
 }
+
 // --- Selection Screen Composable ---
 @Composable
 fun GamesSelectionScreen(
@@ -454,43 +455,26 @@ fun StopwatchScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifier) {
         Column(
             modifier = modifier
                 .fillMaxSize()
-                .padding(paddingValues) // Apply padding from Scaffold
-                .padding(16.dp),      // Additional screen padding
+                .padding(paddingValues)
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = formattedStopwatchTime.substringBeforeLast('.'), // MM:SS
+                text = formattedStopwatchTime,
                 fontSize = 72.sp,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 24.dp)
             )
-            Text(
-                text = "." + formattedStopwatchTime.substringAfterLast('.', "00"), // .ss (milliseconds)
-                fontSize = 36.sp,
-                color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.padding(start = 4.dp) // Align decimal better
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Button(
                     onClick = {
-                        if (isRunning) {
-                            pauseStopwatch()
-                        } else {
-                            startStopwatch()
-                        }
+                        if (isRunning) pauseStopwatch() else startStopwatch()
                     }
                 ) {
-                    Text(if (isRunning) "Pause" else if (elapsedTime > 0L) "Resume" else "Start")
+                    Text(if (isRunning) "Pause" else "Start")
                 }
-                Button(
-                    onClick = { resetStopwatch() },
-                    enabled = elapsedTime > 0L // Enable reset only if time has passed or it's running
-                ) {
+                Button(onClick = { resetStopwatch() }) {
                     Text("Reset")
                 }
             }
@@ -498,63 +482,73 @@ fun StopwatchScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifier) {
     }
 }
 
-// --- Helper function to format milliseconds into MM:SS ---
-// Used by Countdown Timer
+// --- Time Formatters ---
 fun formatMillisecondsToTime(millis: Long): String {
     val totalSeconds = millis / 1000
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
-    return String.format(Locale.getDefault(),"%02d:%02d", minutes, seconds)
+    return String.format("%02d:%02d", minutes, seconds)
 }
 
-// --- Helper function to format milliseconds into MM:SS.mm (for Stopwatch) ---
-// mm represents hundredths of a second
 fun formatMillisecondsToTimeWithMillis(millis: Long): String {
     val totalSeconds = millis / 1000
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
-    val hundredths = (millis % 1000) / 10 // Get hundredths of a second
-    return String.format(Locale.getDefault(),"%02d:%02d.%02d", minutes, seconds, hundredths)
+    val milliseconds = (millis % 1000) / 10 // Get tenths of a second
+    return String.format("%02d:%02d.%01d", minutes, seconds, milliseconds)
 }
 
-
-// --- Previews (Optional, but good for development) ---
-@Preview(showBackground = true, name = "Home Screen Preview")
+// --- Preview Composable ---
+@Preview(showBackground = true)
 @Composable
 fun HomeScreenPreview() {
     BigRedButtonTheme {
-        HomeScreen(onConnectButtons = {}, onGames = {})
+        HomeScreen(
+            onConnectButtons = {},
+            onGames = {}
+        )
     }
 }
 
-@Preview(showBackground = true, name = "Connect Buttons Screen Preview")
+@Preview(showBackground = true)
 @Composable
 fun ConnectButtonsScreenPreview() {
     BigRedButtonTheme {
-        ConnectButtonsScreen(onNavigateBack = {})
+        ConnectButtonsScreen(
+            onNavigateBack = {},
+            onOpenBluetoothSettings = {}
+        )
     }
 }
 
-@Preview(showBackground = true, name = "Selection Screen Preview")
+@Preview(showBackground = true)
 @Composable
-fun SelectionScreenPreview() {
+fun GamesSelectionScreenPreview() {
     BigRedButtonTheme {
-        GamesSelectionScreen(onCountdownSelected = {}, onStopwatchSelected = {}, onNavigateBack = {})
+        GamesSelectionScreen(
+            onCountdownSelected = {},
+            onStopwatchSelected = {},
+            onNavigateBack = {}
+        )
     }
 }
 
-@Preview(showBackground = true, name = "Countdown Timer Preview")
+@Preview(showBackground = true)
 @Composable
 fun CountdownTimerScreenPreview() {
     BigRedButtonTheme {
-        CountdownTimerScreen(onNavigateBack = {})
+        CountdownTimerScreen(
+            onNavigateBack = {}
+        )
     }
 }
 
-@Preview(showBackground = true, name = "Stopwatch Preview")
+@Preview(showBackground = true)
 @Composable
 fun StopwatchScreenPreview() {
     BigRedButtonTheme {
-        StopwatchScreen(onNavigateBack = {})
+        StopwatchScreen(
+            onNavigateBack = {}
+        )
     }
 }
