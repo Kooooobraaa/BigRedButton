@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -117,7 +118,7 @@ fun HomeScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Welcome to Big Red Button!", style = MaterialTheme.typography.headlineMedium)
+        Text("Big Red Button Game App", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
@@ -179,15 +180,18 @@ fun ConnectButtonsScreen(
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(modifier = modifier.border(1.dp, Color.Gray).padding(2.dp),
+                horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Button 1 ready")
                 StatusIcon(isConnected = isButton1Connected)
             }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(modifier = modifier.border(1.dp, Color.Gray).padding(2.dp),
+                horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Button 2 ready")
                 StatusIcon(isConnected = isButton2Connected)
             }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(modifier = modifier.border(1.dp, Color.Gray).padding(2.dp),
+                horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Button 3 ready")
                 StatusIcon(isConnected = isButton3Connected)
             }
