@@ -5,7 +5,9 @@ import android.os.CountDownTimer
 import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +15,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -36,7 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.focusModifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -132,13 +136,29 @@ fun HomeScreen(
 }
 
 // --- Connect Buttons Screen Composable ---
+@Composable
+fun StatusIcon(isConnected: Boolean, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(24.dp)
+            .background(
+                color = if (isConnected) Color(0xFF4CAF50) else Color(0xFFF44336),
+                shape = CircleShape
+            )
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConnectButtonsScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
-)
-{
+) {
+    // Placeholder connection status variables
+    val isButton1Connected = false
+    val isButton2Connected = false
+    val isButton3Connected = false
+
     // Added Scaffold for TopAppBar
     Scaffold(
         topBar = {
@@ -159,10 +179,18 @@ fun ConnectButtonsScreen(
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
-            Text("Button 1 ready")
-            Text("Button 2 ready")
-            Text("Button 3 ready")
-
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Button 1 ready")
+                StatusIcon(isConnected = isButton1Connected)
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Button 2 ready")
+                StatusIcon(isConnected = isButton2Connected)
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Button 3 ready")
+                StatusIcon(isConnected = isButton3Connected)
+            }
         }
 
         Column(
