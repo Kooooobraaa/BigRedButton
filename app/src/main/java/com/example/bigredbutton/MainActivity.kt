@@ -433,6 +433,14 @@ fun formatMillisecondsToTimeWithMillis(millis: Long): String {
 
 
 // --- Previews (Optional, but good for development) ---
+@Preview(showBackground = true, name = "Home Screen Preview")
+@Composable
+fun HomeScreenPreview() {
+    BigRedButtonTheme {
+        HomeScreen(onConnectButtons = {}, onGames = {})
+    }
+}
+
 @Preview(showBackground = true, name = "Selection Screen Preview")
 @Composable
 fun SelectionScreenPreview() {
