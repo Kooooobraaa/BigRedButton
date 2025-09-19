@@ -11,6 +11,7 @@ const String buttonID = "BigRedB_2";
 const int buttonPin = 2;           // Button connected to digital pin 2
 bool lastButtonState = HIGH;       // Initial state (not pressed)
 const int ledPin = 13; // 13 is integrated LED, testing purpose             // LED connected to digital pin 4
+const String resetString = "reset"; // Reset message to restore the button for next game
 
 // Create SoftwareSerial object on pins 10 (RX) and 11 (TX)
 // This pins are used to connect BT module
@@ -42,6 +43,10 @@ void loop() {
       digitalWrite(ledPin, HIGH);  // light up if winner
     } else {
       digitalWrite(ledPin, LOW);   // turn off otherwise
+    }
+
+    if (incoming == resetString) {
+      digitalWrite(ledPin, LOW);
     }
   }
 }

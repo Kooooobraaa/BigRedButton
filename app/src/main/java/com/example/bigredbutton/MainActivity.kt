@@ -419,6 +419,7 @@ fun CountdownTimerScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifi
         timeLeftInMillis = initialTimeMillis // Reset to the user-set or default initial time
         isTimerRunning = false
         winnerId = "" // Reset winner when timer is reset
+        BluetoothMessageManager.sendMessageToAll("reset") // Send reset message to all Arduinos
     }
 
     fun setTimerDuration() {
