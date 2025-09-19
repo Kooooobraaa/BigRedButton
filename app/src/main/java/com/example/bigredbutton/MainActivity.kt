@@ -439,20 +439,6 @@ fun CountdownTimerScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifi
         }
     }
 
-    // Simulated Bluetooth message listener (replace with actual logic)
-    LaunchedEffect(isTimerRunning) {
-        if (isTimerRunning) {
-            // TODO: Replace this block with your actual Bluetooth message receiving logic
-            // Example: listen for messages and set winnerId if not set
-            // while (isTimerRunning && winnerId.isEmpty()) {
-            //     val receivedId = receiveBluetoothId()
-            //     if (receivedId != null && winnerId.isEmpty()) {
-            //         winnerId = receivedId
-            //     }
-            // }
-        }
-    }
-
     // Ensure timer is properly cancelled when the composable leaves the composition
     DisposableEffect(Unit) {
         onDispose {
