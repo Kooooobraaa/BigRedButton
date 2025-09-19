@@ -433,6 +433,8 @@ fun CountdownTimerScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifi
         if (isTimerRunning && winnerId.isEmpty() && !latestBluetoothMessage.isNullOrEmpty()) {
             winnerId = latestBluetoothMessage!!
             BluetoothMessageManager.clearMessage()
+            // Send winner ID to all connected Arduinos
+            BluetoothMessageManager.sendMessageToAll(winnerId)
         }
     }
 
