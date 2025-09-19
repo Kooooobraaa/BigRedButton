@@ -42,6 +42,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -243,6 +244,8 @@ fun ConnectButtonsScreen(
                 socket.connect()
                 withContext(Dispatchers.Main) {
                     updateDeviceState(name) { it.copy(isConnecting = false, isConnected = true, socket = socket, error = null) }
+                    // Start listening for messages from this device
+                    BluetoothMessageManager.listenForMessages(socket)
                 }
             } catch (e: IOException) {
                 withContext(Dispatchers.Main) {
@@ -252,6 +255,7 @@ fun ConnectButtonsScreen(
         }
     }
     suspend fun disconnectFromDevice(device: BluetoothDevice, name: String) {
+        // device parameter is unused, but kept for signature compatibility
         updateDeviceState(name) { it.copy(isConnecting = true, error = null) }
         withContext(Dispatchers.IO) {
             try {
@@ -380,6 +384,10 @@ fun CountdownTimerScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifi
     var isTimerRunning by remember { mutableStateOf(false) }
     var countDownTimer: CountDownTimer? by remember { mutableStateOf(null) }
 
+    // Winner state
+    var winnerId by remember { mutableStateOf("") }
+    val latestBluetoothMessage by BluetoothMessageManager.latestMessage.collectAsState()
+
     val formattedTime = formatMillisecondsToTime(timeLeftInMillis) // Using generic formatter
     val focusManager = LocalFocusManager.current
 
@@ -397,6 +405,7 @@ fun CountdownTimerScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifi
             }
         }.start()
         isTimerRunning = true
+        winnerId = "" // Reset winner when timer starts
     }
 
     fun pauseTimer() {
@@ -408,6 +417,7 @@ fun CountdownTimerScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifi
         countDownTimer?.cancel()
         timeLeftInMillis = initialTimeMillis // Reset to the user-set or default initial time
         isTimerRunning = false
+        winnerId = "" // Reset winner when timer is reset
     }
 
     fun setTimerDuration() {
@@ -415,6 +425,28 @@ fun CountdownTimerScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifi
         initialTimeMillis = max(1, minutes) * 60 * 1000L // ensure at least 1 minute
         resetTimer() // Reset the timer to the new duration
         focusManager.clearFocus() // Hide keyboard
+    }
+
+    // Bluetooth message winner logic
+    LaunchedEffect(isTimerRunning, latestBluetoothMessage) {
+        if (isTimerRunning && winnerId.isEmpty() && !latestBluetoothMessage.isNullOrEmpty()) {
+            winnerId = latestBluetoothMessage!!
+            BluetoothMessageManager.clearMessage()
+        }
+    }
+
+    // Simulated Bluetooth message listener (replace with actual logic)
+    LaunchedEffect(isTimerRunning) {
+        if (isTimerRunning) {
+            // TODO: Replace this block with your actual Bluetooth message receiving logic
+            // Example: listen for messages and set winnerId if not set
+            // while (isTimerRunning && winnerId.isEmpty()) {
+            //     val receivedId = receiveBluetoothId()
+            //     if (receivedId != null && winnerId.isEmpty()) {
+            //         winnerId = receivedId
+            //     }
+            // }
+        }
     }
 
     // Ensure timer is properly cancelled when the composable leaves the composition
@@ -451,6 +483,15 @@ fun CountdownTimerScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifi
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            // Winner display
+            if (winnerId.isNotEmpty()) {
+                Text(
+                    text = "Winner: $winnerId",
+                    fontSize = 48.sp,
+                    color = Color.Red,
+                    modifier = Modifier.padding(bottom = 32.dp)
+                )
+            }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -692,3 +733,4 @@ fun StopwatchScreenPreview() {
         )
     }
 }
+
