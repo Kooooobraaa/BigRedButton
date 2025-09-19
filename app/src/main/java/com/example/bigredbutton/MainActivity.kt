@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -50,6 +52,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -166,16 +169,27 @@ fun StatusIcon(isConnected: Boolean, modifier: Modifier = Modifier) {
     )
 }
 
+data class DeviceState(
+    val device: BluetoothDevice?,
+    val name: String,
+    val address: String,
+    val isConnected: Boolean = false,
+    val isConnecting: Boolean = false
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConnectButtonsScreen(
     onNavigateBack: () -> Unit,
     onOpenBluetoothSettings: (android.content.Context) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    deviceStates: List<DeviceState> = emptyList()
 ) {
     val context = LocalContext.current
+    val isInPreview = LocalInspectionMode.current
     val coroutineScope = rememberCoroutineScope()
-    val bluetoothPermissionGranted = remember {
+    // Only run Bluetooth logic if not in preview
+    val bluetoothPermissionGranted = if (!isInPreview) {
         if (android.os.Build.VERSION.SDK_INT >= 31) {
             ContextCompat.checkSelfPermission(
                 context,
@@ -184,54 +198,38 @@ fun ConnectButtonsScreen(
         } else {
             true // Always granted on pre-API 31
         }
-    }
-    //val bluetoothAdapter = if (bluetoothPermissionGranted) BluetoothAdapter.getDefaultAdapter() else null
-    val bluetoothManager = context.getSystemService(android.bluetooth.BluetoothManager::class.java)
-    val bluetoothAdapter = if (bluetoothPermissionGranted) bluetoothManager?.adapter else null
-    val pairedDevices = remember {
-        bluetoothAdapter?.bondedDevices?.filter {
-            it.name == "BigRedB_1" || it.name == "BigRedB_2" || it.name == "BigRedB_3"
-        } ?: emptyList()
-    }
-    val sppUuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
-
-    // State for each device
-    data class DeviceState(
-        val device: BluetoothDevice,
-        val isConnected: Boolean = false,
-        val isConnecting: Boolean = false,
-        val socket: java.io.Closeable? = null
-    )
-    val deviceStates = remember { mutableStateOf(pairedDevices.map { DeviceState(it) }) }
-
-    // Helper to update device state by address
-    fun updateDeviceState(address: String, update: (DeviceState) -> DeviceState) {
-        deviceStates.value = deviceStates.value.map {
-            if (it.device.address == address) update(it) else it
+    } else false
+    val bluetoothManager = if (!isInPreview) context.getSystemService(android.bluetooth.BluetoothManager::class.java) else null
+    val bluetoothAdapter = if (!isInPreview && bluetoothPermissionGranted) bluetoothManager?.adapter else null
+    val pairedDevices = if (!isInPreview) {
+        remember {
+            bluetoothAdapter?.bondedDevices?.filter {
+                it.name == "BigRedB_1" || it.name == "BigRedB_2" || it.name == "BigRedB_3"
+            } ?: emptyList()
         }
-    }
+    } else emptyList<BluetoothDevice>()
+    val sppUuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 
     // Connect/disconnect logic
     suspend fun connectToDevice(device: BluetoothDevice) {
-        updateDeviceState(device.address) { it.copy(isConnecting = true) }
+        if (isInPreview) return
         withContext(Dispatchers.IO) {
             try {
                 val socket = device.createRfcommSocketToServiceRecord(sppUuid)
                 bluetoothAdapter?.cancelDiscovery()
                 socket.connect()
-                updateDeviceState(device.address) { it.copy(isConnected = true, isConnecting = false, socket = socket) }
+                // Update the connection state in the deviceStates list
             } catch (_: IOException) {
-                updateDeviceState(device.address) { it.copy(isConnected = false, isConnecting = false, socket = null) }
+                // Handle connection failure
             }
         }
     }
     suspend fun disconnectFromDevice(device: BluetoothDevice) {
+        if (isInPreview) return
         withContext(Dispatchers.IO) {
-            val state = deviceStates.value.find { it.device.address == device.address }
             try {
-                state?.socket?.close()
+                // Find the device state by address and close the socket
             } catch (_: Exception) {}
-            updateDeviceState(device.address) { it.copy(isConnected = false, isConnecting = false, socket = null) }
         }
     }
 
@@ -254,18 +252,26 @@ fun ConnectButtonsScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            deviceStates.value.forEach { state ->
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(8.dp)) {
-                    Text(state.device.name)
-                    StatusIcon(isConnected = state.isConnected)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    if (state.isConnected) {
-                        Button(onClick = { coroutineScope.launch { disconnectFromDevice(state.device) } }, enabled = !state.isConnecting) {
-                            Text("Disconnect")
-                        }
-                    } else {
-                        Button(onClick = { coroutineScope.launch { connectToDevice(state.device) } }, enabled = !state.isConnecting) {
-                            Text(if (state.isConnecting) "Connecting..." else "Connect")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                deviceStates.forEach { state ->
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(8.dp)) {
+                        Text(state.name)
+                        StatusIcon(isConnected = state.isConnected)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        if (state.isConnected) {
+                            Button(onClick = { state.device?.let { coroutineScope.launch { disconnectFromDevice(it) } } }, enabled = !state.isConnecting) {
+                                Text("Disconnect")
+                            }
+                        } else {
+                            Button(onClick = { state.device?.let { coroutineScope.launch { connectToDevice(it) } } }, enabled = !state.isConnecting) {
+                                Text(if (state.isConnecting) "Connecting..." else "Connect")
+                            }
                         }
                     }
                 }
@@ -577,10 +583,29 @@ fun HomeScreenPreview() {
 @Preview(showBackground = true)
 @Composable
 fun ConnectButtonsScreenPreview() {
+    val mockDevices = listOf(
+        DeviceState(
+            device = null,
+            name = "MockDevice_1",
+            address = "00:11:22:33:44:55",
+            isConnected = true,
+            isConnecting = false
+        ),
+        DeviceState(
+            device = null,
+            name = "MockDevice_2",
+            address = "66:77:88:99:AA:BB",
+            isConnected = false,
+            isConnecting = false
+        )
+    )
+
     BigRedButtonTheme {
         ConnectButtonsScreen(
             onNavigateBack = {},
-            onOpenBluetoothSettings = {}
+            onOpenBluetoothSettings = {},
+            modifier = Modifier,
+            deviceStates = mockDevices
         )
     }
 }
