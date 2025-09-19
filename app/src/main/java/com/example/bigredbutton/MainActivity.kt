@@ -393,6 +393,7 @@ fun CountdownTimerScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifi
 
     fun startTimer() {
         countDownTimer?.cancel() // Cancel any existing timer
+        BluetoothMessageManager.clearMessage() // Clear any stale Bluetooth message before starting
         countDownTimer = object : CountDownTimer(timeLeftInMillis, 100) {
             override fun onTick(millisUntilFinished: Long) {
                 timeLeftInMillis = millisUntilFinished
@@ -733,4 +734,3 @@ fun StopwatchScreenPreview() {
         )
     }
 }
-
