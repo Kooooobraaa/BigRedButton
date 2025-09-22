@@ -15,6 +15,7 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -395,8 +396,13 @@ fun CountdownTimerScreen(
     modifier: Modifier = Modifier
     ) {
     // Input state for user-defined minutes
-    var inputMinutes by remember { mutableStateOf(DEFAULT_INITIAL_MINUTES.toString()) }
+    //var inputMinutes by remember { mutableStateOf(DEFAULT_INITIAL_MINUTES.toString()) }
     var initialTimeMillis by remember { mutableLongStateOf(DEFAULT_INITIAL_MINUTES * 60 * 1000L) }
+
+    var minutes by remember { mutableIntStateOf(2) }
+    var seconds by remember { mutableIntStateOf(0) }
+    var showMinuteKeypad by remember { mutableStateOf(false) }
+    var showSecondKeypad by remember { mutableStateOf(false) }
 
     // Timer state
     var timeLeftInMillis by remember { mutableLongStateOf(initialTimeMillis) }
@@ -408,7 +414,7 @@ fun CountdownTimerScreen(
     val latestBluetoothMessage by BluetoothMessageManager.latestMessage.collectAsState()
 
     val formattedTime = formatMillisecondsToTime(timeLeftInMillis) // Using generic formatter
-    val focusManager = LocalFocusManager.current
+    //val focusManager = LocalFocusManager.current
 
     fun startTimer() {
         countDownTimer?.cancel() // Cancel any existing timer
@@ -441,12 +447,12 @@ fun CountdownTimerScreen(
         BluetoothMessageManager.sendMessageToAll("reset") // Send reset message to all Arduinos
     }
 
-    fun setTimerDuration() {
+/*    fun setTimerDuration() {
         val minutes = inputMinutes.toLongOrNull() ?: DEFAULT_INITIAL_MINUTES
         initialTimeMillis = max(1, minutes) * 60 * 1000L // ensure at least 1 minute
         resetTimer() // Reset the timer to the new duration
         focusManager.clearFocus() // Hide keyboard
-    }
+    }*/
 
     // Bluetooth message winner logic
     LaunchedEffect(isTimerRunning, latestBluetoothMessage) {
@@ -490,7 +496,7 @@ fun CountdownTimerScreen(
                 .padding(paddingValues) // Apply padding from Scaffold
                 .padding(16.dp), // Additional screen padding
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
+            //verticalArrangement = Arrangement.Top
         ) {
             // Device status row
             DeviceStatusRow(deviceStates)
@@ -542,35 +548,48 @@ fun CountdownTimerScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(bottom = 24.dp)
             ) {
-                DialTimePicker(
-                    initialMinutes = (initialTimeMillis / 60000).toInt(),
-                    initialSeconds = ((initialTimeMillis % 60000) / 1000).toInt()
-                ) { minutes, seconds ->
-                    initialTimeMillis = (minutes * 60 + seconds) * 1000L
-                    resetTimer()
-                }
-                /*OutlinedTextField(
-                    value = inputMinutes,
-                    onValueChange = { newValue ->
-                        if (newValue.all { it.isDigit() } && newValue.length <= 3) {
-                            inputMinutes = newValue
-                        }
+                Text(
+                    text = "%02d".format(minutes),
+                    fontSize = 32.sp,
+                    modifier = Modifier
+                        .clickable { showMinuteKeypad = true }
+                        .padding(8.dp)
+                )
+                Text(":", fontSize = 32.sp)
+                // Seconds field
+                Text(
+                    text = "%02d".format(seconds),
+                    fontSize = 32.sp,
+                    modifier = Modifier
+                        .clickable { showSecondKeypad = true }
+                        .padding(8.dp)
+                )
+            }
+
+            // Number keypad dialogs
+            if (showMinuteKeypad) {
+                NumberKeypadDialog(
+                    initialValue = minutes,
+                    label = "Minutes",
+                    onValueEntered = {
+                        minutes = it.coerceIn(0, 59)
+                        showMinuteKeypad = false
+                        // Update timer duration here if needed
                     },
-                    label = { Text("Minutes") },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number,
-                        imeAction = ImeAction.Done
-                    ),
-                    singleLine = true,
-                    modifier = Modifier.weight(1f),
-                    enabled = !isTimerRunning
-                )*/
-                /*Button(
-                    onClick = { setTimerDuration() },
-                    enabled = !isTimerRunning
-                ) {
-                    Text("Set")
-                }*/
+                    onDismiss = { showMinuteKeypad = false }
+                )
+            }
+            if (showSecondKeypad) {
+                NumberKeypadDialog(
+                    initialValue = seconds,
+                    label = "Seconds",
+                    onValueEntered = {
+                        seconds = it.coerceIn(0, 59)
+                        showSecondKeypad = false
+                        // Update timer duration here if needed
+                    },
+                    onDismiss = { showSecondKeypad = false }
+                )
             }
 
             Text(
@@ -750,7 +769,7 @@ fun WinnerDisplay(winnerId: String, modifier: Modifier = Modifier) {
     }
 }
 
-@Composable
+/*@Composable
 fun DialTimePicker(
     initialMinutes: Int,
     initialSeconds: Int = 0,
@@ -795,10 +814,10 @@ fun DialTimePicker(
             }
         )
     }
-}
+}*/
 
 // Simple NumberPicker using Compose (not the AndroidView one)
-@Composable
+/*@Composable
 fun NumberPicker(
     value: Int,
     range: IntRange,
@@ -810,6 +829,52 @@ fun NumberPicker(
         Text("%02d %s".format(value, label), modifier = Modifier.padding(horizontal = 8.dp))
         TextButton(onClick = { if (value < range.last) onValueChange(value + 1) }) { Text("+") }
     }
+}*/
+
+// Simple Number Keypad Dialog
+// For entering minutes or seconds
+@Composable
+fun NumberKeypadDialog(
+    initialValue: Int,
+    label: String,
+    onValueEntered: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var value by remember { mutableStateOf(initialValue.toString()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Enter $label") },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(value, fontSize = 32.sp)
+                // Simple keypad (0-9)
+                for (row in 0..2) {
+                    Row {
+                        for (col in 1..3) {
+                            val num = row * 3 + col
+                            if (num <= 9) {
+                                Button(onClick = { value += num.toString() }) {
+                                    Text(num.toString())
+                                }
+                            }
+                        }
+                    }
+                }
+                Row {
+                    Button(onClick = { value = value.dropLast(1) }) { Text("⌫") }
+                    Button(onClick = { value += "0" }) { Text("0") }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onValueEntered(value.toIntOrNull() ?: initialValue)
+            }) { Text("OK") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
 
 // --- Preview Composable ---
