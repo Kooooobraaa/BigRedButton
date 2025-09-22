@@ -15,6 +15,7 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,7 +26,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -65,7 +65,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import com.example.bigredbutton.DeviceState
 import com.example.bigredbutton.ui.theme.BigRedButtonTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -74,7 +73,6 @@ import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.util.Locale
 import java.util.UUID
-import kotlin.collections.List
 import kotlin.math.max
 
 enum class Screen {
@@ -495,93 +493,96 @@ fun CountdownTimerScreen(
                 })
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = modifier
                 .fillMaxSize()
-                .padding(paddingValues) // Apply padding from Scaffold
-                .padding(16.dp), // Additional screen padding
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
+                .padding(paddingValues)
         ) {
-            // Device status row
-            DeviceStatusRow(deviceStates)
+            DeviceStatusRow(
+                deviceStates,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 16.dp)
+            )
 
-            WinnerDisplay(winnerId)
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(bottom = 24.dp)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.align(Alignment.Center)
             ) {
-                OutlinedTextField(
-                    value = inputMinutes,
-                    onValueChange = { newValue ->
-                        if (newValue.all { it.isDigit() } && newValue.length <= 3) {
-                            inputMinutes = newValue
-                        }
-                    },
-                    label = { Text("Minutes") },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number,
-                        imeAction = ImeAction.Next
-                    ),
-                    singleLine = true,
-                    modifier = Modifier
-                        //.weight(1f)
-                        .width(100.dp),
-                    enabled = !isTimerRunning
-                )
-                OutlinedTextField(
-                    value = inputSeconds,
-                    onValueChange = { newValue ->
-                        if (newValue.all { it.isDigit() } && newValue.length <= 2) {
-                            inputSeconds = newValue
-                        }
-                    },
-                    label = { Text("Seconds") },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number,
-                        imeAction = ImeAction.Done
-                    ),
-                    singleLine = true,
-                    modifier = Modifier
-                        .width(100.dp),
-                    enabled = !isTimerRunning
-                )
-                Button(
-                    onClick = { setTimerDuration() },
-                    enabled = !isTimerRunning
-                ) {
-                    Text("Set")
-                }
-            }
+                WinnerDisplay(winnerId)
 
-            Text(
-                text = formattedTime,
-                fontSize = 72.sp,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp) // Added padding for tenths of a second
-            )
-            // Display tenths of a second for countdown
-            Text(
-                text = String.format(Locale.getDefault(), ".%01d", (timeLeftInMillis % 1000) / 100),
-                fontSize = 24.sp,
-                color = MaterialTheme.colorScheme.secondary
-            )
-            Spacer(modifier = Modifier.height(32.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Button(
-                    onClick = {
-                        if (isTimerRunning) pauseTimer() else {
-                            if (timeLeftInMillis > 0) startTimer()
-                        }
-                    },
-                    enabled = timeLeftInMillis > 0
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(bottom = 24.dp)
                 ) {
-                    Text(if (isTimerRunning) "Pause" else "Start")
+                    OutlinedTextField(
+                        value = inputMinutes,
+                        onValueChange = { newValue ->
+                            if (newValue.all { it.isDigit() } && newValue.length <= 3) {
+                                inputMinutes = newValue
+                            }
+                        },
+                        label = { Text("Minutes") },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Next
+                        ),
+                        singleLine = true,
+                        modifier = Modifier.width(100.dp),
+                        enabled = !isTimerRunning
+                    )
+                    OutlinedTextField(
+                        value = inputSeconds,
+                        onValueChange = { newValue ->
+                            if (newValue.all { it.isDigit() } && newValue.length <= 2) {
+                                inputSeconds = newValue
+                            }
+                        },
+                        label = { Text("Seconds") },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Done
+                        ),
+                        singleLine = true,
+                        modifier = Modifier.width(100.dp),
+                        enabled = !isTimerRunning
+                    )
+                    Button(
+                        onClick = { setTimerDuration() },
+                        enabled = !isTimerRunning
+                    ) {
+                        Text("Set")
+                    }
                 }
-                Button(onClick = { resetTimer() }) {
-                    Text("Reset")
+
+                Text(
+                    text = formattedTime,
+                    fontSize = 72.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Text(
+                    text = String.format(Locale.getDefault(), ".%01d", (timeLeftInMillis % 1000) / 100),
+                    fontSize = 24.sp,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+                Spacer(modifier = Modifier.height(32.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Button(
+                        onClick = {
+                            if (isTimerRunning) pauseTimer() else {
+                                if (timeLeftInMillis > 0) startTimer()
+                            }
+                        },
+                        enabled = timeLeftInMillis > 0
+                    ) {
+                        Text(if (isTimerRunning) "Pause" else "Start")
+                    }
+                    Button(onClick = { resetTimer() }) {
+                        Text("Reset")
+                    }
                 }
             }
         }
@@ -645,21 +646,22 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
             )
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = modifier
-                .fillMaxSize()
+                . fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
         ) {
-
-            DeviceStatusRow(deviceStates)
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(bottom = 24.dp)
+            // Device status row
+            DeviceStatusRow(
+                deviceStates,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 16.dp)
+            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.align(Alignment.Center)
             ) {
                 Text(
                     text = formattedStopwatchTime,
@@ -667,18 +669,17 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(bottom = 24.dp)
                 )
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Button(
-                    onClick = {
-                        if (isRunning) pauseStopwatch() else startStopwatch()
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Button(
+                        onClick = {
+                            if (isRunning) pauseStopwatch() else startStopwatch()
+                        }
+                    ) {
+                        Text(if (isRunning) "Pause" else "Start")
                     }
-                ) {
-                    Text(if (isRunning) "Pause" else "Start")
-                }
-                Button(onClick = { resetStopwatch() }) {
-                    Text("Reset")
+                    Button(onClick = { resetStopwatch() }) {
+                        Text("Reset")
+                    }
                 }
             }
         }
