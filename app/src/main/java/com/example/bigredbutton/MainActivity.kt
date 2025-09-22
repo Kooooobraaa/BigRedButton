@@ -1,7 +1,6 @@
 package com.example.bigredbutton // Replace with your actual package name
 
 import android.Manifest
-//import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
@@ -27,6 +26,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -93,7 +93,13 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AppNavigator() // Main navigator composable
+                    val deviceStates = remember { mutableStateListOf<DeviceState>() }
+
+                    AppNavigator(deviceStates = deviceStates,
+                        updateDeviceState = { name, update ->
+                            val idx = deviceStates.indexOfFirst { it.name == name }
+                            if (idx != -1) deviceStates[idx] = update(deviceStates[idx])
+                        }) // Main navigator composable
                 }
             }
         }
@@ -102,7 +108,10 @@ class MainActivity : ComponentActivity() {
 
 // --- App Navigator ---
 @Composable
-fun AppNavigator() {
+fun AppNavigator(
+    deviceStates: List<DeviceState>,
+    updateDeviceState: (name: String, update: (DeviceState) -> DeviceState) -> Unit
+) {
     var currentScreen by remember { mutableStateOf(Screen.Home) }
 
     when (currentScreen) {
@@ -115,7 +124,9 @@ fun AppNavigator() {
             onOpenBluetoothSettings = { context ->
                 val intent = Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
                 context.startActivity(intent)
-            }
+            },
+            deviceStates = deviceStates,
+            updateDeviceState = updateDeviceState
         )
         Screen.GamesSelection -> GamesSelectionScreen(
             onCountdownSelected = { currentScreen = Screen.CountdownTimer },
@@ -124,7 +135,8 @@ fun AppNavigator() {
         )
         Screen.CountdownTimer -> CountdownTimerScreen(
             onNavigateBack = { currentScreen = Screen.GamesSelection },
-            deviceStates = TODO()
+            deviceStates = deviceStates,
+            updateDeviceState = updateDeviceState
         )
         Screen.Stopwatch -> StopwatchScreen(
             onNavigateBack = { currentScreen = Screen.GamesSelection }
@@ -192,7 +204,8 @@ fun ConnectButtonsScreen(
     onNavigateBack: () -> Unit,
     onOpenBluetoothSettings: (Context) -> Unit,
     modifier: Modifier = Modifier,
-    deviceStates: List<DeviceState>? = null
+    deviceStates: List<DeviceState>? = null,
+    updateDeviceState: (name: String, update: (DeviceState) -> DeviceState) -> Unit
 ) {
     val context = LocalContext.current
     val isInPreview = LocalInspectionMode.current
@@ -227,13 +240,6 @@ fun ConnectButtonsScreen(
     }
     val stateList = remember { mutableStateListOf<DeviceState>().apply { addAll(deviceStates ?: initialDeviceStates) } }
     val sppUuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
-
-    fun updateDeviceState(name: String, update: (DeviceState) -> DeviceState) {
-        val idx = stateList.indexOfFirst { it.name == name }
-        if (idx != -1) {
-            stateList[idx] = update(stateList[idx])
-        }
-    }
 
     fun setError(name: String, error: String) {
         updateDeviceState(name) { it.copy(isConnecting = false, isConnected = false, error = error, socket = null) }
@@ -381,11 +387,17 @@ const val DEFAULT_INITIAL_MINUTES = 2L
 fun CountdownTimerScreen(
     onNavigateBack: () -> Unit,
     deviceStates: List<DeviceState>,
+    updateDeviceState: (name: String, update: (DeviceState) -> DeviceState) -> Unit,
     modifier: Modifier = Modifier
     ) {
     // Input state for user-defined minutes
     var inputMinutes by remember { mutableStateOf(DEFAULT_INITIAL_MINUTES.toString()) }
+    var inputSeconds by remember { mutableStateOf("0") }
     var initialTimeMillis by remember { mutableLongStateOf(DEFAULT_INITIAL_MINUTES * 60 * 1000L) }
+
+
+    //var inputMinutes by remember { mutableStateOf(DEFAULT_INITIAL_MINUTES.toString()) }
+    //var initialTimeMillis by remember { mutableLongStateOf(DEFAULT_INITIAL_MINUTES * 60 * 1000L) }
 
     // Timer state
     var timeLeftInMillis by remember { mutableLongStateOf(initialTimeMillis) }
@@ -431,10 +443,11 @@ fun CountdownTimerScreen(
     }
 
     fun setTimerDuration() {
-        val minutes = inputMinutes.toLongOrNull() ?: DEFAULT_INITIAL_MINUTES
-        initialTimeMillis = max(1, minutes) * 60 * 1000L // ensure at least 1 minute
-        resetTimer() // Reset the timer to the new duration
-        focusManager.clearFocus() // Hide keyboard
+        val minutes = inputMinutes.toLongOrNull() ?: 0L
+        val seconds = inputSeconds.toLongOrNull()?.coerceIn(0, 59) ?: 0L
+        initialTimeMillis = max(1, minutes * 60 + seconds) * 1000L // at least 1 second
+        resetTimer()
+        focusManager.clearFocus()
     }
 
     // Bluetooth message winner logic
@@ -483,47 +496,7 @@ fun CountdownTimerScreen(
         ) {
             // Device status row
             DeviceStatusRow(deviceStates)
-            /*Row(
-                horizontalArrangement = Arrangement.SpaceEvenly, *//*Arrangement.spacedBy(16.dp),*//*
-                verticalAlignment = Alignment.Top,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp)
-            ) {
-                deviceStates.forEach { state ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        StatusIcon(isConnected = state.isConnected)
-                        Text(state.name, fontSize = 12.sp)
-                    }
-                }
-            }*/
-/*            // Winner display
-            if (winnerId.isNotEmpty()) {
-                Text(
-                    text = "Winner: $winnerId",
-                    fontSize = 48.sp,
-                    color = Color.Red,
-                    modifier = Modifier.padding(bottom = 32.dp)
-                )
-            }
-            else {
-                Text(
-                    text = "... and the winner is ...",
-                    fontSize = 32.sp,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(bottom = 32.dp)
-                )
-            }*/
-/*            Text(
-                text = "... and the winner is ... ",
-                fontSize = 32.sp,
-                color = Color.Gray
-            )
-            Text(
-                text = winnerId,
-                fontSize = 48.sp,
-                color = if (winnerId.isNotEmpty()) Color.Red else Color.Transparent
-            )*/
+
             WinnerDisplay(winnerId)
 
             Row(
@@ -541,10 +514,29 @@ fun CountdownTimerScreen(
                     label = { Text("Minutes") },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Next
+                    ),
+                    singleLine = true,
+                    modifier = Modifier
+                        //.weight(1f)
+                        .width(100.dp),
+                    enabled = !isTimerRunning
+                )
+                OutlinedTextField(
+                    value = inputSeconds,
+                    onValueChange = { newValue ->
+                        if (newValue.all { it.isDigit() } && newValue.length <= 2) {
+                            inputSeconds = newValue
+                        }
+                    },
+                    label = { Text("Seconds") },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
                         imeAction = ImeAction.Done
                     ),
                     singleLine = true,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .width(100.dp),
                     enabled = !isTimerRunning
                 )
                 Button(
@@ -777,7 +769,8 @@ fun ConnectButtonsScreenPreview() {
             onNavigateBack = {},
             onOpenBluetoothSettings = {},
             modifier = Modifier,
-            deviceStates = mockDevices
+            deviceStates = mockDevices,
+            updateDeviceState = { _, _ -> }
         )
     }
 }
@@ -823,7 +816,8 @@ fun CountdownTimerScreenPreview() {
     BigRedButtonTheme {
         CountdownTimerScreen(
             onNavigateBack = {},
-            deviceStates = mockDevices
+            deviceStates = mockDevices,
+            updateDeviceState = { _, _ -> }
         )
     }
 }
