@@ -1,7 +1,6 @@
 package com.example.bigredbutton // Replace with your actual package name
 
 import android.Manifest
-//import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
@@ -16,6 +15,7 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,27 +26,27 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -59,8 +59,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalInspectionMode
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -93,7 +91,14 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AppNavigator() // Main navigator composable
+
+                    val deviceStates = remember { mutableStateListOf<DeviceState>() }
+
+                    AppNavigator(deviceStates = deviceStates,
+                        updateDeviceState = { name, update ->
+                            val idx = deviceStates.indexOfFirst { it.name == name }
+                            if (idx != -1) deviceStates[idx] = update(deviceStates[idx])
+                        }) // Main navigator composable
                 }
             }
         }
@@ -102,7 +107,10 @@ class MainActivity : ComponentActivity() {
 
 // --- App Navigator ---
 @Composable
-fun AppNavigator() {
+fun AppNavigator(
+    deviceStates: List<DeviceState>,
+    updateDeviceState: (name: String, update: (DeviceState) -> DeviceState) -> Unit
+) {
     var currentScreen by remember { mutableStateOf(Screen.Home) }
 
     when (currentScreen) {
@@ -115,7 +123,9 @@ fun AppNavigator() {
             onOpenBluetoothSettings = { context ->
                 val intent = Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
                 context.startActivity(intent)
-            }
+            },
+            deviceStates = deviceStates,
+            updateDeviceState = updateDeviceState
         )
         Screen.GamesSelection -> GamesSelectionScreen(
             onCountdownSelected = { currentScreen = Screen.CountdownTimer },
@@ -124,7 +134,7 @@ fun AppNavigator() {
         )
         Screen.CountdownTimer -> CountdownTimerScreen(
             onNavigateBack = { currentScreen = Screen.GamesSelection },
-            deviceStates = TODO()
+            deviceStates = deviceStates
         )
         Screen.Stopwatch -> StopwatchScreen(
             onNavigateBack = { currentScreen = Screen.GamesSelection }
@@ -192,7 +202,8 @@ fun ConnectButtonsScreen(
     onNavigateBack: () -> Unit,
     onOpenBluetoothSettings: (Context) -> Unit,
     modifier: Modifier = Modifier,
-    deviceStates: List<DeviceState>? = null
+    deviceStates: List<DeviceState>? = null,
+    updateDeviceState: (name: String, update: (DeviceState) -> DeviceState) -> Unit
 ) {
     val context = LocalContext.current
     val isInPreview = LocalInspectionMode.current
@@ -228,12 +239,12 @@ fun ConnectButtonsScreen(
     val stateList = remember { mutableStateListOf<DeviceState>().apply { addAll(deviceStates ?: initialDeviceStates) } }
     val sppUuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 
-    fun updateDeviceState(name: String, update: (DeviceState) -> DeviceState) {
+   /* fun updateDeviceState(name: String, update: (DeviceState) -> DeviceState) {
         val idx = stateList.indexOfFirst { it.name == name }
         if (idx != -1) {
             stateList[idx] = update(stateList[idx])
         }
-    }
+    }*/
 
     fun setError(name: String, error: String) {
         updateDeviceState(name) { it.copy(isConnecting = false, isConnected = false, error = error, socket = null) }
@@ -531,7 +542,14 @@ fun CountdownTimerScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(bottom = 24.dp)
             ) {
-                OutlinedTextField(
+                DialTimePicker(
+                    initialMinutes = (initialTimeMillis / 60000).toInt(),
+                    initialSeconds = ((initialTimeMillis % 60000) / 1000).toInt()
+                ) { minutes, seconds ->
+                    initialTimeMillis = (minutes * 60 + seconds) * 1000L
+                    resetTimer()
+                }
+                /*OutlinedTextField(
                     value = inputMinutes,
                     onValueChange = { newValue ->
                         if (newValue.all { it.isDigit() } && newValue.length <= 3) {
@@ -546,13 +564,13 @@ fun CountdownTimerScreen(
                     singleLine = true,
                     modifier = Modifier.weight(1f),
                     enabled = !isTimerRunning
-                )
-                Button(
+                )*/
+                /*Button(
                     onClick = { setTimerDuration() },
                     enabled = !isTimerRunning
                 ) {
                     Text("Set")
-                }
+                }*/
             }
 
             Text(
@@ -732,6 +750,67 @@ fun WinnerDisplay(winnerId: String, modifier: Modifier = Modifier) {
     }
 }
 
+@Composable
+fun DialTimePicker(
+    initialMinutes: Int,
+    initialSeconds: Int = 0,
+    onTimeSelected: (minutes: Int, seconds: Int) -> Unit
+) {
+    var showDialog by remember { mutableStateOf(false) }
+    var minutes by remember { mutableIntStateOf(initialMinutes) }
+    var seconds by remember { mutableIntStateOf(initialSeconds) }
+
+    Button(onClick = { showDialog = true }) {
+        Text("Set Timer")
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Pick Minutes & Seconds") },
+            text = {
+                Row(modifier = Modifier.padding(8.dp)) {
+                    NumberPicker(
+                        value = minutes,
+                        range = 0..59,
+                        onValueChange = { minutes = it },
+                        label = "min"
+                    )
+                    NumberPicker(
+                        value = seconds,
+                        range = 0..59,
+                        onValueChange = { seconds = it },
+                        label = "sec"
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDialog = false
+                    onTimeSelected(minutes, seconds)
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+}
+
+// Simple NumberPicker using Compose (not the AndroidView one)
+@Composable
+fun NumberPicker(
+    value: Int,
+    range: IntRange,
+    onValueChange: (Int) -> Unit,
+    label: String
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        TextButton(onClick = { if (value > range.first) onValueChange(value - 1) }) { Text("-") }
+        Text("%02d %s".format(value, label), modifier = Modifier.padding(horizontal = 8.dp))
+        TextButton(onClick = { if (value < range.last) onValueChange(value + 1) }) { Text("+") }
+    }
+}
 
 // --- Preview Composable ---
 @Preview(showBackground = true)
@@ -777,7 +856,8 @@ fun ConnectButtonsScreenPreview() {
             onNavigateBack = {},
             onOpenBluetoothSettings = {},
             modifier = Modifier,
-            deviceStates = mockDevices
+            deviceStates = mockDevices,
+            updateDeviceState = { _, _ -> }
         )
     }
 }
