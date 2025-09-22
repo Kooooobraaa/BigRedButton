@@ -3,9 +3,12 @@ package com.example.bigredbutton // Replace with your actual package name
 import android.Manifest
 //import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.SystemClock
@@ -120,7 +123,8 @@ fun AppNavigator() {
             onNavigateBack = { currentScreen = Screen.Home }
         )
         Screen.CountdownTimer -> CountdownTimerScreen(
-            onNavigateBack = { currentScreen = Screen.GamesSelection }
+            onNavigateBack = { currentScreen = Screen.GamesSelection },
+            deviceStates = TODO()
         )
         Screen.Stopwatch -> StopwatchScreen(
             onNavigateBack = { currentScreen = Screen.GamesSelection }
@@ -186,7 +190,7 @@ data class DeviceState(
 @Composable
 fun ConnectButtonsScreen(
     onNavigateBack: () -> Unit,
-    onOpenBluetoothSettings: (android.content.Context) -> Unit,
+    onOpenBluetoothSettings: (Context) -> Unit,
     modifier: Modifier = Modifier,
     deviceStates: List<DeviceState>? = null
 ) {
@@ -194,7 +198,7 @@ fun ConnectButtonsScreen(
     val isInPreview = LocalInspectionMode.current
     val coroutineScope = rememberCoroutineScope()
     val bluetoothPermissionGranted = if (!isInPreview) {
-        if (android.os.Build.VERSION.SDK_INT >= 31) {
+        if (Build.VERSION.SDK_INT >= 31) {
             ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.BLUETOOTH_CONNECT
@@ -203,7 +207,7 @@ fun ConnectButtonsScreen(
             true
         }
     } else false
-    val bluetoothManager = if (!isInPreview) context.getSystemService(android.bluetooth.BluetoothManager::class.java) else null
+    val bluetoothManager = if (!isInPreview) context.getSystemService(BluetoothManager::class.java) else null
     val bluetoothAdapter = if (!isInPreview && bluetoothPermissionGranted) bluetoothManager?.adapter else null
     val pairedDevices = if (!isInPreview) {
         remember {
@@ -374,7 +378,11 @@ const val DEFAULT_INITIAL_MINUTES = 2L
 
 @OptIn(ExperimentalMaterial3Api::class) // For OutlinedTextField
 @Composable
-fun CountdownTimerScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifier) {
+fun CountdownTimerScreen(
+    onNavigateBack: () -> Unit,
+    deviceStates: List<DeviceState>,
+    modifier: Modifier = Modifier
+    ) {
     // Input state for user-defined minutes
     var inputMinutes by remember { mutableStateOf(DEFAULT_INITIAL_MINUTES.toString()) }
     var initialTimeMillis by remember { mutableLongStateOf(DEFAULT_INITIAL_MINUTES * 60 * 1000L) }
@@ -471,9 +479,23 @@ fun CountdownTimerScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifi
                 .padding(paddingValues) // Apply padding from Scaffold
                 .padding(16.dp), // Additional screen padding
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Top
         ) {
-            // Winner display
+            Row(
+                horizontalArrangement = Arrangement.SpaceEvenly, /*Arrangement.spacedBy(16.dp),*/
+                verticalAlignment = Alignment.Top,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+            ) {
+                deviceStates.forEach { state ->
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        StatusIcon(isConnected = state.isConnected)
+                        Text(state.name, fontSize = 12.sp)
+                    }
+                }
+            }
+/*            // Winner display
             if (winnerId.isNotEmpty()) {
                 Text(
                     text = "Winner: $winnerId",
@@ -482,6 +504,24 @@ fun CountdownTimerScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifi
                     modifier = Modifier.padding(bottom = 32.dp)
                 )
             }
+            else {
+                Text(
+                    text = "... and the winner is ...",
+                    fontSize = 32.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(bottom = 32.dp)
+                )
+            }*/
+            Text(
+                text = "... and the winner is ... ",
+                fontSize = 32.sp,
+                color = Color.Gray
+            )
+            Text(
+                text = winnerId,
+                fontSize = 48.sp,
+                color = if (winnerId.isNotEmpty()) Color.Red else Color.Transparent
+            )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -707,9 +747,33 @@ fun GamesSelectionScreenPreview() {
 @Preview(showBackground = true)
 @Composable
 fun CountdownTimerScreenPreview() {
+    val mockDevices = listOf(
+        DeviceState(
+            device = null,
+            name = "BigRedB_1",
+            address = "00:11:22:33:44:55",
+            isConnected = true,
+            isConnecting = false
+        ),
+        DeviceState(
+            device = null,
+            name = "BigRedB_2",
+            address = "Unavailable",
+            isConnected = false,
+            isConnecting = false
+        ),
+        DeviceState(
+            device = null,
+            name = "BigRedB_3",
+            address = "Unavailable",
+            isConnected = false,
+            isConnecting = false
+        )
+    )
     BigRedButtonTheme {
         CountdownTimerScreen(
-            onNavigateBack = {}
+            onNavigateBack = {},
+            deviceStates = mockDevices
         )
     }
 }
