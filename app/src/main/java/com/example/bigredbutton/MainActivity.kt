@@ -1,4 +1,4 @@
-package com.example.bigredbutton // Replace with your actual package name
+package com.example.bigredbutton
 
 import android.Manifest
 import android.bluetooth.BluetoothDevice
@@ -65,6 +65,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.example.bigredbutton.DeviceState
 import com.example.bigredbutton.ui.theme.BigRedButtonTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -73,6 +74,7 @@ import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.util.Locale
 import java.util.UUID
+import kotlin.collections.List
 import kotlin.math.max
 
 enum class Screen {
@@ -139,7 +141,9 @@ fun AppNavigator(
             updateDeviceState = updateDeviceState
         )
         Screen.Stopwatch -> StopwatchScreen(
-            onNavigateBack = { currentScreen = Screen.GamesSelection }
+            onNavigateBack = { currentScreen = Screen.GamesSelection },
+            deviceStates = deviceStates,
+            updateDeviceState = updateDeviceState
         )
     }
 }
@@ -242,7 +246,10 @@ fun ConnectButtonsScreen(
     val sppUuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 
     fun setError(name: String, error: String) {
-        updateDeviceState(name) { it.copy(isConnecting = false, isConnected = false, error = error, socket = null) }
+        updateDeviceState(name) { it.copy(isConnecting = false,
+            isConnected = false,
+            error = error,
+            socket = null) }
     }
 
     suspend fun connectToDevice(device: BluetoothDevice, name: String) {
@@ -253,7 +260,10 @@ fun ConnectButtonsScreen(
                 bluetoothAdapter?.cancelDiscovery()
                 socket.connect()
                 withContext(Dispatchers.Main) {
-                    updateDeviceState(name) { it.copy(isConnecting = false, isConnected = true, socket = socket, error = null) }
+                    updateDeviceState(name) { it.copy(isConnecting = false,
+                        isConnected = true,
+                        socket = socket,
+                        error = null) }
                     // Start listening for messages from this device
                     BluetoothMessageManager.listenForMessages(socket)
                 }
@@ -273,7 +283,10 @@ fun ConnectButtonsScreen(
                 val socket = stateList.getOrNull(idx)?.socket
                 socket?.close()
                 withContext(Dispatchers.Main) {
-                    updateDeviceState(name) { it.copy(isConnecting = false, isConnected = false, socket = null, error = null) }
+                    updateDeviceState(name) { it.copy(isConnecting = false,
+                        isConnected = false,
+                        socket = null,
+                        error = null) }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -394,10 +407,6 @@ fun CountdownTimerScreen(
     var inputMinutes by remember { mutableStateOf(DEFAULT_INITIAL_MINUTES.toString()) }
     var inputSeconds by remember { mutableStateOf("0") }
     var initialTimeMillis by remember { mutableLongStateOf(DEFAULT_INITIAL_MINUTES * 60 * 1000L) }
-
-
-    //var inputMinutes by remember { mutableStateOf(DEFAULT_INITIAL_MINUTES.toString()) }
-    //var initialTimeMillis by remember { mutableLongStateOf(DEFAULT_INITIAL_MINUTES * 60 * 1000L) }
 
     // Timer state
     var timeLeftInMillis by remember { mutableLongStateOf(initialTimeMillis) }
@@ -582,7 +591,10 @@ fun CountdownTimerScreen(
 // --- Stopwatch Screen Composable ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StopwatchScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifier) {
+fun StopwatchScreen(onNavigateBack: () -> Unit,
+                    modifier: Modifier = Modifier,
+                    deviceStates: List<DeviceState>,
+                    updateDeviceState: (name: String, update: (DeviceState) -> DeviceState) -> Unit) {
     var elapsedTime by remember { mutableLongStateOf(0L) } // Time in milliseconds
     var isRunning by remember { mutableStateOf(false) }
     // Store the time when the stopwatch was started, or the point from which it was resumed
@@ -639,14 +651,24 @@ fun StopwatchScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifier) {
                 .padding(paddingValues)
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Top
         ) {
-            Text(
-                text = formattedStopwatchTime,
-                fontSize = 72.sp,
-                color = MaterialTheme.colorScheme.primary,
+
+            DeviceStatusRow(deviceStates)
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(bottom = 24.dp)
-            )
+            ) {
+                Text(
+                    text = formattedStopwatchTime,
+                    fontSize = 72.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 24.dp)
+                )
+            }
+
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Button(
                     onClick = {
@@ -825,9 +847,34 @@ fun CountdownTimerScreenPreview() {
 @Preview(showBackground = true)
 @Composable
 fun StopwatchScreenPreview() {
+    val mockDevices = listOf(
+        DeviceState(
+            device = null,
+            name = "BigRedB_1",
+            address = "00:11:22:33:44:55",
+            isConnected = true,
+            isConnecting = false
+        ),
+        DeviceState(
+            device = null,
+            name = "BigRedB_2",
+            address = "Unavailable",
+            isConnected = false,
+            isConnecting = false
+        ),
+        DeviceState(
+            device = null,
+            name = "BigRedB_3",
+            address = "Unavailable",
+            isConnected = false,
+            isConnecting = false
+        )
+    )
     BigRedButtonTheme {
         StopwatchScreen(
-            onNavigateBack = {}
+            onNavigateBack = {},
+            deviceStates = mockDevices,
+            updateDeviceState = { _, _ -> }
         )
     }
 }
