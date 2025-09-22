@@ -481,8 +481,10 @@ fun CountdownTimerScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceEvenly, /*Arrangement.spacedBy(16.dp),*/
+            // Device status row
+            DeviceStatusRow(deviceStates)
+            /*Row(
+                horizontalArrangement = Arrangement.SpaceEvenly, *//*Arrangement.spacedBy(16.dp),*//*
                 verticalAlignment = Alignment.Top,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -494,7 +496,7 @@ fun CountdownTimerScreen(
                         Text(state.name, fontSize = 12.sp)
                     }
                 }
-            }
+            }*/
 /*            // Winner display
             if (winnerId.isNotEmpty()) {
                 Text(
@@ -512,7 +514,7 @@ fun CountdownTimerScreen(
                     modifier = Modifier.padding(bottom = 32.dp)
                 )
             }*/
-            Text(
+/*            Text(
                 text = "... and the winner is ... ",
                 fontSize = 32.sp,
                 color = Color.Gray
@@ -521,7 +523,9 @@ fun CountdownTimerScreen(
                 text = winnerId,
                 fontSize = 48.sp,
                 color = if (winnerId.isNotEmpty()) Color.Red else Color.Transparent
-            )
+            )*/
+            WinnerDisplay(winnerId)
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -682,6 +686,52 @@ fun formatMillisecondsToTimeWithMillis(millis: Long): String {
     val milliseconds = (millis % 1000) / 10 // Get tenths of a second
     return String.format(Locale.getDefault(), "%02d:%02d.%01d", minutes, seconds, milliseconds)
 }
+
+// -------------------------------------------------------------
+// --- Reusable Composable ---
+// -------------------------------------------------------------
+
+// --- Game Button Status ---
+// Displays connection status icons for multiple devices in a row
+@Composable
+fun DeviceStatusRow(deviceStates: List<DeviceState>, modifier: Modifier = Modifier) {
+    Row(
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.Top,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(bottom = 16.dp)
+    ) {
+        deviceStates.forEach { state ->
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                StatusIcon(isConnected = state.isConnected)
+                Text(state.name, fontSize = 12.sp)
+            }
+        }
+    }
+}
+
+// --- Winner Display ---
+// Displays the winner ID or a placeholder message
+@Composable
+fun WinnerDisplay(winnerId: String, modifier: Modifier = Modifier) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.padding(bottom = 32.dp)
+    ) {
+        Text(
+            text = "... and the winner is ... ",
+            fontSize = 32.sp,
+            color = Color.Gray
+        )
+        Text(
+            text = winnerId,
+            fontSize = 48.sp,
+            color = if (winnerId.isNotEmpty()) Color.Red else Color.Transparent
+        )
+    }
+}
+
 
 // --- Preview Composable ---
 @Preview(showBackground = true)
