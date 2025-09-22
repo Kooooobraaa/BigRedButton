@@ -1,7 +1,6 @@
 package com.example.bigredbutton // Replace with your actual package name
 
 import android.Manifest
-//import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
@@ -16,9 +15,11 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,10 +27,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
@@ -37,7 +36,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -47,6 +45,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -57,10 +56,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalInspectionMode
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -73,7 +69,6 @@ import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.util.Locale
 import java.util.UUID
-import kotlin.math.max
 
 enum class Screen {
     Home,
@@ -374,9 +369,9 @@ fun GamesSelectionScreen(
 
 // --- Countdown Timer Screen Composable ---
 // Initial time for the timer (e.g., 2 minutes)
-const val DEFAULT_INITIAL_MINUTES = 2L
+const val DEFAULT_INITIAL_MINUTES = 2
 
-@OptIn(ExperimentalMaterial3Api::class) // For OutlinedTextField
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CountdownTimerScreen(
     onNavigateBack: () -> Unit,
@@ -384,8 +379,10 @@ fun CountdownTimerScreen(
     modifier: Modifier = Modifier
     ) {
     // Input state for user-defined minutes
-    var inputMinutes by remember { mutableStateOf(DEFAULT_INITIAL_MINUTES.toString()) }
-    var initialTimeMillis by remember { mutableLongStateOf(DEFAULT_INITIAL_MINUTES * 60 * 1000L) }
+    var minutes by remember { mutableIntStateOf(DEFAULT_INITIAL_MINUTES) }
+    var seconds by remember { mutableIntStateOf(0) }
+    //var inputMinutes by remember { mutableStateOf(DEFAULT_INITIAL_MINUTES.toString()) }
+    var initialTimeMillis by remember { mutableLongStateOf((minutes * 60 + seconds) * 1000L) }
 
     // Timer state
     var timeLeftInMillis by remember { mutableLongStateOf(initialTimeMillis) }
@@ -397,7 +394,7 @@ fun CountdownTimerScreen(
     val latestBluetoothMessage by BluetoothMessageManager.latestMessage.collectAsState()
 
     val formattedTime = formatMillisecondsToTime(timeLeftInMillis) // Using generic formatter
-    val focusManager = LocalFocusManager.current
+    //val focusManager = LocalFocusManager.current
 
     fun startTimer() {
         countDownTimer?.cancel() // Cancel any existing timer
@@ -430,12 +427,16 @@ fun CountdownTimerScreen(
         BluetoothMessageManager.sendMessageToAll("reset") // Send reset message to all Arduinos
     }
 
-    fun setTimerDuration() {
+    fun updateInitialTime() {
+        initialTimeMillis = (minutes * 60 + seconds) * 1000L
+        resetTimer() // Reset the timer to the new duration
+    }
+/*    fun setTimerDuration() {
         val minutes = inputMinutes.toLongOrNull() ?: DEFAULT_INITIAL_MINUTES
         initialTimeMillis = max(1, minutes) * 60 * 1000L // ensure at least 1 minute
         resetTimer() // Reset the timer to the new duration
         focusManager.clearFocus() // Hide keyboard
-    }
+    }*/
 
     // Bluetooth message winner logic
     LaunchedEffect(isTimerRunning, latestBluetoothMessage) {
@@ -481,111 +482,111 @@ fun CountdownTimerScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            // Device status row
+
             DeviceStatusRow(deviceStates)
-            /*Row(
-                horizontalArrangement = Arrangement.SpaceEvenly, *//*Arrangement.spacedBy(16.dp),*//*
-                verticalAlignment = Alignment.Top,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp)
+
+            Column(
+                modifier = modifier
+                    . fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                deviceStates.forEach { state ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        StatusIcon(isConnected = state.isConnected)
-                        Text(state.name, fontSize = 12.sp)
+                WinnerDisplay(winnerId)
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(bottom = 24.dp)
+                ) {
+                    TimePicker(
+                        minutes = minutes,
+                        seconds = seconds,onTimeChange = {newMinutes, newSeconds ->
+                            minutes = newMinutes
+                            seconds = newSeconds
+                            updateInitialTime()
+                        }
+                    )
+
+                    Text(
+                        text = formattedTime,
+                        fontSize = 72.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Button(
+                            onClick = {
+                                if (isTimerRunning) pauseTimer() else {
+                                    if (timeLeftInMillis > 0) startTimer()
+                                }
+                            },
+                            enabled = timeLeftInMillis > 0
+                        ) {
+                            Text(if (isTimerRunning) "Pause" else "Start")
+                        }
+                        Button(onClick = { resetTimer() }) {
+                            Text("Reset")
+                        }
                     }
-                }
-            }*/
-/*            // Winner display
-            if (winnerId.isNotEmpty()) {
-                Text(
-                    text = "Winner: $winnerId",
-                    fontSize = 48.sp,
-                    color = Color.Red,
-                    modifier = Modifier.padding(bottom = 32.dp)
-                )
-            }
-            else {
-                Text(
-                    text = "... and the winner is ...",
-                    fontSize = 32.sp,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(bottom = 32.dp)
-                )
-            }*/
-/*            Text(
-                text = "... and the winner is ... ",
-                fontSize = 32.sp,
-                color = Color.Gray
-            )
-            Text(
-                text = winnerId,
-                fontSize = 48.sp,
-                color = if (winnerId.isNotEmpty()) Color.Red else Color.Transparent
-            )*/
-            WinnerDisplay(winnerId)
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(bottom = 24.dp)
-            ) {
-                OutlinedTextField(
-                    value = inputMinutes,
-                    onValueChange = { newValue ->
-                        if (newValue.all { it.isDigit() } && newValue.length <= 3) {
-                            inputMinutes = newValue
-                        }
-                    },
-                    label = { Text("Minutes") },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number,
-                        imeAction = ImeAction.Done
-                    ),
-                    singleLine = true,
-                    modifier = Modifier.weight(1f),
-                    enabled = !isTimerRunning
-                )
-                Button(
-                    onClick = { setTimerDuration() },
-                    enabled = !isTimerRunning
-                ) {
-                    Text("Set")
                 }
-            }
+                    /*OutlinedTextField(
+                        value = inputMinutes,
+                        onValueChange = { newValue ->
+                            if (newValue.all { it.isDigit() } && newValue.length <= 3) {
+                                inputMinutes = newValue
+                            }
+                        },
+                        label = { Text("Minutes") },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Done
+                        ),
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        enabled = !isTimerRunning
+                    )*/
+                    /*Button(
+                        onClick = { setTimerDuration() },
+                        enabled = !isTimerRunning
+                    ) {
+                        Text("Set")
+                    }*/
+                }
 
-            Text(
-                text = formattedTime,
-                fontSize = 72.sp,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp) // Added padding for tenths of a second
-            )
-            // Display tenths of a second for countdown
-            Text(
-                text = String.format(Locale.getDefault(), ".%01d", (timeLeftInMillis % 1000) / 100),
-                fontSize = 24.sp,
-                color = MaterialTheme.colorScheme.secondary
-            )
-            Spacer(modifier = Modifier.height(32.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Button(
-                    onClick = {
-                        if (isTimerRunning) pauseTimer() else {
-                            if (timeLeftInMillis > 0) startTimer()
-                        }
-                    },
-                    enabled = timeLeftInMillis > 0
-                ) {
-                    Text(if (isTimerRunning) "Pause" else "Start")
-                }
-                Button(onClick = { resetTimer() }) {
-                    Text("Reset")
+                Text(
+                    text = formattedTime,
+                    fontSize = 72.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 8.dp) // Added padding for tenths of a second
+                )
+                // Display tenths of a second for countdown
+                Text(
+                    text = String.format(Locale.getDefault(), ".%01d", (timeLeftInMillis % 1000) / 100),
+                    fontSize = 24.sp,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+                Spacer(modifier = Modifier.height(32.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Button(
+                        onClick = {
+                            if (isTimerRunning) pauseTimer() else {
+                                if (timeLeftInMillis > 0) startTimer()
+                            }
+                        },
+                        enabled = timeLeftInMillis > 0
+                    ) {
+                        Text(if (isTimerRunning) "Pause" else "Start")
+                    }
+                    Button(onClick = { resetTimer() }) {
+                        Text("Reset")
+                    }
                 }
             }
         }
     }
-}
+
 
 // --- Stopwatch Screen Composable ---
 @OptIn(ExperimentalMaterial3Api::class)
@@ -728,6 +729,71 @@ fun WinnerDisplay(winnerId: String, modifier: Modifier = Modifier) {
             text = winnerId,
             fontSize = 48.sp,
             color = if (winnerId.isNotEmpty()) Color.Red else Color.Transparent
+        )
+    }
+}
+
+// --- Digit Picker Composable ---
+// Allows selection of a single digit (0-9) with up/down buttons
+@Composable
+fun DigitPicker(
+    value: Int,
+    range: IntRange,
+    onValueChange: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.padding(4.dp)
+    ) {
+        Button(
+            onClick = { if (value < range.last) onValueChange(value + 1) },
+            contentPadding = PaddingValues(0.dp),
+            modifier = Modifier.size(32.dp)
+        ) { Text("▲") }
+        Text("%d".format(value), fontSize = 32.sp)
+        Button(
+            onClick = { if (value > range.first) onValueChange(value - 1) },
+            contentPadding = PaddingValues(0.dp),
+            modifier = Modifier.size(32.dp)
+        ) { Text("▼") }
+    }
+}
+
+// --- Time Picker Composable ---
+// Allows selection of minutes and seconds using DigitPickers
+@Composable
+fun TimePicker(
+    minutes: Int,
+    seconds: Int,
+    onTimeChange: (Int, Int) -> Unit
+) {
+    val tensOfMinutes = minutes / 10
+    val singleMinutes = minutes % 10
+    val tensOfSeconds = seconds / 10
+    val singleSeconds = seconds % 10
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        DigitPicker(
+            value = tensOfMinutes,
+            range = 0..9,
+            onValueChange = { onTimeChange(it * 10 + singleMinutes, seconds) }
+        )
+        DigitPicker(
+            value = singleMinutes,
+            range = 0..9,
+            onValueChange = { onTimeChange(tensOfMinutes * 10 + it, seconds) }
+        )
+        Text(":", fontSize = 32.sp, modifier = Modifier.padding(horizontal = 4.dp))
+        DigitPicker(
+            value = tensOfSeconds,
+            range = 0..5,
+            onValueChange = { onTimeChange(minutes, it * 10 + singleSeconds) }
+        )
+        DigitPicker(
+            value = singleSeconds,
+            range = 0..9,
+            onValueChange = { onTimeChange(minutes, tensOfSeconds * 10 + it) }
         )
     }
 }
