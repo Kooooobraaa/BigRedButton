@@ -737,7 +737,10 @@ fun DeviceStatusRow(deviceStates: List<DeviceState>, modifier: Modifier = Modifi
             .padding(bottom = 16.dp)
     ) {
         deviceStates.forEach { state ->
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally) {
                 StatusIcon(isConnected = state.isConnected)
                 Text(state.name, fontSize = 12.sp)
             }
