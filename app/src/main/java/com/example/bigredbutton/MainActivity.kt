@@ -451,6 +451,7 @@ fun CountdownTimerScreen(
         }.start()
         isTimerRunning = true
         winnerId = "" // Reset winner when timer starts
+        BluetoothMessageManager.sendMessageToAll("reset")
     }
 
     fun pauseTimer() {
@@ -481,6 +482,7 @@ fun CountdownTimerScreen(
             BluetoothMessageManager.clearMessage()
             // Send winner ID to all connected Arduinos
             BluetoothMessageManager.sendMessageToAll(winnerId)
+            pauseTimer()
         }
     }
 
