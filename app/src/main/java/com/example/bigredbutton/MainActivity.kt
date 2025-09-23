@@ -728,7 +728,7 @@ fun formatMillisecondsToTimeWithMillis(millis: Long): String {
 @Composable
 fun DeviceStatusRow(deviceStates: List<DeviceState>, modifier: Modifier = Modifier) {
     Row(
-        horizontalArrangement = Arrangement.SpaceEvenly,
+        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.Top,
         modifier = modifier
             .fillMaxWidth()
@@ -751,19 +751,17 @@ fun WinnerDisplay(winnerId: String, modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier.padding(bottom = 32.dp)
     ) {
+        var winnerText = "... and the winner is ..."
+        if (winnerId.isNotEmpty()) {
+            winnerText = winnerId
+        }
         Text(
-            text = "... and the winner is ... ",
-            fontSize = 32.sp,
-            color = Color.Gray
-        )
-        Text(
-            text = winnerId,
-            fontSize = 48.sp,
-            color = if (winnerId.isNotEmpty()) Color.Red else Color.Transparent
+            text = winnerText,
+            fontSize = if(winnerId.isEmpty()) 32.sp else 48.sp,
+            color = if (winnerId.isEmpty()) Color.Gray else Color.Red
         )
     }
 }
-
 
 // --- Preview Composable ---
 @Preview(showBackground = true)
