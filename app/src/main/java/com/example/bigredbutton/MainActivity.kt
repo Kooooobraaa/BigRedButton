@@ -469,7 +469,7 @@ fun CountdownTimerScreen(
     var winnerId by remember { mutableStateOf("") }
     val latestBluetoothMessage by BluetoothMessageManager.latestMessage.collectAsState()
 
-    val formattedTime = formatMillisecondsToTime(timeLeftInMillis) // Using generic formatter
+    val formattedTime = formatMillisecondsToTimeWithHundredths(timeLeftInMillis)
     val focusManager = LocalFocusManager.current
 
     fun startTimer() {
@@ -619,13 +619,9 @@ fun CountdownTimerScreen(
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
-                Text(
-                    text = String.format(Locale.getDefault(), ".%01d", (timeLeftInMillis % 1000) / 100),
-                    fontSize = 24.sp,
-                    color = MaterialTheme.colorScheme.secondary
-                )
+
                 Spacer(modifier = Modifier.height(32.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
                     Button(
                         onClick = {
                             if (isTimerRunning) pauseTimer() else {
@@ -756,6 +752,14 @@ fun formatMillisecondsToTimeWithMillis(millis: Long): String {
     val seconds = totalSeconds % 60
     val milliseconds = (millis % 1000) / 10 // Get tenths of a second
     return String.format(Locale.getDefault(), "%02d:%02d.%01d", minutes, seconds, milliseconds)
+}
+
+fun formatMillisecondsToTimeWithHundredths(millis: Long): String {
+    val totalSeconds = millis / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    val hundredths = (millis % 1000) / 10 // Two digits
+    return String.format(Locale.getDefault(), "%02d:%02d.%02d", minutes, seconds, hundredths)
 }
 
 // -------------------------------------------------------------
