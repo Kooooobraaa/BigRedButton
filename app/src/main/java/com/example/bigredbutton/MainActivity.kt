@@ -158,6 +158,7 @@ fun HomeScreen(
     onGames: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -176,9 +177,17 @@ fun HomeScreen(
         }
         Button(
             onClick = onGames,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
         ) {
             Text("Games")
+        }
+        Button(
+            onClick = {
+                (context as? ComponentActivity)?.finish()
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Exit")
         }
     }
 }
