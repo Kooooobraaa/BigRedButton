@@ -3,8 +3,8 @@
 // Unique ID for this Arduino, that will represent button
 // This ID must be "hard coded" so it is unique for the device
 
-//const String buttonID = "BigRedB_1";
-const String buttonID = "BigRedB_2";
+const String buttonID = "BigRedB_1";
+//const String buttonID = "BigRedB_2";
 //const String buttonID = "BigRedB_3";
 
 // Consts and variables needed
@@ -29,7 +29,7 @@ void loop() {
   // Detect button press (transition from HIGH to LOW)
   if (lastButtonState == HIGH && currentButtonState == LOW) {
     BTSerial.println(buttonID); // Send message via Bluetooth
-    delay(200); // Debounce delay
+    delay(50); // Debounce delay
   }
 
   lastButtonState = currentButtonState;
