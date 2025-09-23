@@ -93,7 +93,13 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val deviceStates = remember { mutableStateListOf<DeviceState>() }
+                    val deviceNames = listOf("BigRedB_1", "BigRedB_2", "BigRedB_3")
+                    val deviceStates = remember {
+                        mutableStateListOf<DeviceState>().apply{
+                            deviceNames.forEach { name ->
+                                add(DeviceState(device = null, name = name, address = "Unavailable") )
+                            }
+                        } }
 
                     AppNavigator(deviceStates = deviceStates,
                         updateDeviceState = { name, update ->
@@ -240,7 +246,6 @@ fun ConnectButtonsScreen(
             address = device?.address ?: "Unavailable"
         )
     }
-    val stateList = remember { mutableStateListOf<DeviceState>().apply { addAll(deviceStates ?: initialDeviceStates) } }
     val sppUuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 
     fun setError(name: String, error: String) {
@@ -277,8 +282,8 @@ fun ConnectButtonsScreen(
         updateDeviceState(name) { it.copy(isConnecting = true, error = null) }
         withContext(Dispatchers.IO) {
             try {
-                val idx = stateList.indexOfFirst { it.name == name }
-                val socket = stateList.getOrNull(idx)?.socket
+                val idx = deviceStates?.indexOfFirst { it.name == name } ?: -1
+                val socket = deviceStates?.getOrNull(idx)?.socket
                 socket?.close()
                 withContext(Dispatchers.Main) {
                     updateDeviceState(name) { it.copy(isConnecting = false,
@@ -317,10 +322,11 @@ fun ConnectButtonsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                //horizontalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.Top
             ) {
-                stateList.forEach { state ->
+                deviceStates?.forEach { state ->
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(8.dp)) {
                         Text(state.name)
                         StatusIcon(isConnected = state.isConnected)
@@ -345,9 +351,20 @@ fun ConnectButtonsScreen(
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(72.dp))
             Button(onClick = { onOpenBluetoothSettings(context) }) {
                 Text("Open Bluetooth Settings")
+            }
+        }
+    }
+
+    // On entering the screen, update deviceStates with paired device info
+    LaunchedEffect(pairedDevices) {
+        pairedDevices.forEach { btDevice ->
+            updateDeviceState(btDevice.name) { state ->
+                if (state.device == null || state.address != btDevice.address) {
+                    state.copy(device = btDevice, address = btDevice.address ?: "Unavailable")
+                } else state
             }
         }
     }
