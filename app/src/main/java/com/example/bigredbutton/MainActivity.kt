@@ -622,18 +622,37 @@ fun CountdownTimerScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
+                    val startPauseBgColor = if (isTimerRunning) Color(0xFFFFCC80) else Color(0xFF4CAF50)
+                    val startPauseText = if (isTimerRunning) "Pause" else "Start"
+                    val startPauseTextColor = Color.Black
+                    val resetBgColor = Color(0xFFFF4E5F)
+                    val resetTextColor = Color.Black
                     Button(
                         onClick = {
                             if (isTimerRunning) pauseTimer() else {
                                 if (timeLeftInMillis > 0) startTimer()
                             }
                         },
-                        enabled = timeLeftInMillis > 0
+                        enabled = timeLeftInMillis > 0,
+                        modifier = Modifier
+                            .height(64.dp)
+                            .weight(2f)
+                            .fillMaxWidth()
+                            .padding(start = 6.dp, end = 2.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = startPauseBgColor)
                     ) {
-                        Text(if (isTimerRunning) "Pause" else "Start")
+                        Text(startPauseText, color = startPauseTextColor, fontSize = 28.sp)
                     }
-                    Button(onClick = { resetTimer() }) {
-                        Text("Reset")
+                    Button(
+                        onClick = { resetTimer() },
+                        modifier = Modifier
+                            .height(64.dp)
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(start = 2.dp, end = 6.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = resetBgColor)
+                    ) {
+                        Text("Reset", color = resetTextColor, fontSize = 22.sp)
                     }
                 }
             }
