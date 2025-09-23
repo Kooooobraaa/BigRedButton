@@ -1,7 +1,6 @@
 package com.example.bigredbutton
 
 import android.Manifest
-import android.R
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
@@ -325,49 +324,64 @@ fun ConnectButtonsScreen(
                 })
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                //horizontalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.Top
+                    .align(Alignment.TopCenter)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                deviceStates?.forEach { state ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(8.dp)) {
-                        Text(state.name)
-                        StatusIcon(isConnected = state.isConnected)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        if (state.device == null) {
-                            Text("Not Paired", color = Color.Gray)
-                            Button(onClick = {}, enabled = false) {
-                                Text("Connect")
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    deviceStates?.forEach { state ->
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(8.dp)) {
+                            Text(state.name)
+                            StatusIcon(isConnected = state.isConnected)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            if (state.device == null) {
+                                Text("Not Paired", color = Color.Gray)
+                                Button(onClick = {}, enabled = false) {
+                                    Text("Connect")
+                                }
+                            } else if (state.isConnected) {
+                                Button(onClick = { coroutineScope.launch { disconnectFromDevice(state.device, state.name) } }, enabled = !state.isConnecting) {
+                                    Text("Disconnect")
+                                }
+                            } else {
+                                Button(onClick = { coroutineScope.launch { connectToDevice(state.device, state.name) } }, enabled = !state.isConnecting) {
+                                    Text(if (state.isConnecting) "Connecting..." else "Connect")
+                                }
                             }
-                        } else if (state.isConnected) {
-                            Button(onClick = { coroutineScope.launch { disconnectFromDevice(state.device, state.name) } }, enabled = !state.isConnecting) {
-                                Text("Disconnect")
+                            if (state.error != null) {
+                                Text(state.error, color = Color.Red, fontSize = 12.sp)
                             }
-                        } else {
-                            Button(onClick = { coroutineScope.launch { connectToDevice(state.device, state.name) } }, enabled = !state.isConnecting) {
-                                Text(if (state.isConnecting) "Connecting..." else "Connect")
-                            }
-                        }
-                        if (state.error != null) {
-                            Text(state.error, color = Color.Red, fontSize = 12.sp)
                         }
                     }
                 }
+                Spacer(modifier = Modifier.height(72.dp))
+                Button(onClick = { onOpenBluetoothSettings(context) }) {
+                    Text("Open Bluetooth Settings")
+                }
             }
-            Spacer(modifier = Modifier.height(72.dp))
-            Button(onClick = { onOpenBluetoothSettings(context) }) {
-                Text("Open Bluetooth Settings")
+            OutlinedButton(
+                onClick = onNavigateBack,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+            ) {
+                Text("Back", color = Color.Black)
             }
         }
     }
@@ -392,30 +406,39 @@ fun GamesSelectionScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+    Box(
+        modifier = modifier.fillMaxSize()
     ) {
-        Button(
-            onClick = onCountdownSelected,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.Center)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Countdown")
+            Button(
+                onClick = onCountdownSelected,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+            ) {
+                Text("Countdown")
+            }
+            Button(
+                onClick = onStopwatchSelected,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+            ) {
+                Text("Stopwatch")
+            }
         }
-        Button(
-            onClick = onStopwatchSelected,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
-        ) {
-            Text("Stopwatch")
-        }
-        Button(
+        OutlinedButton(
             onClick = onNavigateBack,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.White)
         ) {
-            Text("Back")
+            Text("Back", color = Color.Black)
         }
     }
 }
