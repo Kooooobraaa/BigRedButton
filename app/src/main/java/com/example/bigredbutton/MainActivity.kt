@@ -387,8 +387,7 @@ fun ConnectButtonsScreen(
 fun GamesSelectionScreen(
     onCountdownSelected: () -> Unit,
     onStopwatchSelected: () -> Unit,
-    onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    onNavigateBack: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -466,6 +465,8 @@ fun CountdownTimerScreen(
         }
     }
 
+    var hasStarted by remember { mutableStateOf(false) }
+
     fun startTimer() {
         countDownTimer?.cancel() // Cancel any existing timer
         BluetoothMessageManager.clearMessage() // Clear any stale Bluetooth message before starting
@@ -481,6 +482,7 @@ fun CountdownTimerScreen(
             }
         }.start()
         isTimerRunning = true
+        hasStarted = true
         winnerId = "" // Reset winner when timer starts
         BluetoothMessageManager.sendMessageToAll("reset")
     }
@@ -494,6 +496,7 @@ fun CountdownTimerScreen(
         countDownTimer?.cancel()
         timeLeftInMillis = initialTimeMillis // Reset to the user-set or default initial time
         isTimerRunning = false
+        hasStarted = false
         winnerId = "" // Reset winner when timer is reset
         BluetoothMessageManager.sendMessageToAll("reset") // Send reset message to all Arduinos
     }
@@ -531,6 +534,14 @@ fun CountdownTimerScreen(
         }
     }
 
+    // Determine background color based on timer state
+    val backgroundColor = when {
+        isTimerRunning -> Color(0xFF4CAF50) // Green
+        !isTimerRunning && timeLeftInMillis == 0L && hasStarted -> Color(0xFFFF4E5F) // Red
+        !isTimerRunning && hasStarted -> Color(0xFFFFF9C4) // Light yellow
+        else -> Color.White // Default before timer starts
+    }
+
     // Added Scaffold for TopAppBar
     Scaffold(
         topBar = {
@@ -546,6 +557,7 @@ fun CountdownTimerScreen(
         Box(
             modifier = modifier
                 .fillMaxSize()
+                .background(backgroundColor)
                 .padding(paddingValues)
         ) {
             DeviceStatusRow(
