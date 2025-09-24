@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothSocket
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.MediaPlayer
 import android.os.Build
 import android.os.Bundle
 import android.os.CountDownTimer
@@ -453,6 +454,17 @@ fun CountdownTimerScreen(
 
     val formattedTime = formatMillisecondsToTimeWithMillis(timeLeftInMillis)
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
+
+    fun playEndSound() {
+        try {
+            val mediaPlayer = MediaPlayer.create(context, R.raw.timer_end)
+            mediaPlayer.setOnCompletionListener { it.release() }
+            mediaPlayer.start()
+        } catch (e: Exception) {
+            // Handle error if needed
+        }
+    }
 
     fun startTimer() {
         countDownTimer?.cancel() // Cancel any existing timer
@@ -465,7 +477,7 @@ fun CountdownTimerScreen(
             override fun onFinish() {
                 timeLeftInMillis = 0
                 isTimerRunning = false
-                // Optionally, add a sound or vibration here
+                playEndSound() // Play sound when timer hits 0
             }
         }.start()
         isTimerRunning = true
