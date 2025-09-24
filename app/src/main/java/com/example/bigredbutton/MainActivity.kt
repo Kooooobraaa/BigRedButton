@@ -365,16 +365,6 @@ fun ConnectButtonsScreen(
                     Text("Open Bluetooth Settings")
                 }
             }
-            OutlinedButton(
-                onClick = onNavigateBack,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White)
-            ) {
-                Text("Back", color = Color.Black)
-            }
         }
     }
 
@@ -391,6 +381,7 @@ fun ConnectButtonsScreen(
 }
 
 // --- Selection Screen Composable ---
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GamesSelectionScreen(
     onCountdownSelected: () -> Unit,
@@ -398,13 +389,22 @@ fun GamesSelectionScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = modifier.fillMaxSize()
-    ) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Select Game") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.Center)
+                .fillMaxSize()
+                .padding(paddingValues)
                 .padding(16.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
@@ -421,16 +421,6 @@ fun GamesSelectionScreen(
             ) {
                 Text("Stopwatch")
             }
-        }
-        OutlinedButton(
-            onClick = onNavigateBack,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(bottom = 64.dp, start = 16.dp, end = 16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.White)
-        ) {
-            Text("Back", color = Color.Black)
         }
     }
 }
