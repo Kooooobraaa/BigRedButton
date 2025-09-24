@@ -250,15 +250,6 @@ fun ConnectButtonsScreen(
             } ?: emptyList()
         }
     } else emptyList<BluetoothDevice>()
-    val deviceNames = listOf("BigRedB_1", "BigRedB_2", "BigRedB_3")
-    val initialDeviceStates = deviceNames.map { name ->
-        val device = pairedDevices.find { it.name == name }
-        DeviceState(
-            device = device,
-            name = name,
-            address = device?.address ?: "Unavailable"
-        )
-    }
     val sppUuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 
     fun setError(name: String, error: String) {
@@ -290,6 +281,7 @@ fun ConnectButtonsScreen(
             }
         }
     }
+    @Suppress("UNUSED_PARAMETER")
     suspend fun disconnectFromDevice(device: BluetoothDevice, name: String) {
         // device parameter is unused, but kept for signature compatibility
         updateDeviceState(name) { it.copy(isConnecting = true, error = null) }
@@ -435,7 +427,7 @@ fun GamesSelectionScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(bottom = 64.dp, start = 16.dp, end = 16.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color.White)
         ) {
             Text("Back", color = Color.Black)
@@ -469,7 +461,7 @@ fun CountdownTimerScreen(
     var winnerId by remember { mutableStateOf("") }
     val latestBluetoothMessage by BluetoothMessageManager.latestMessage.collectAsState()
 
-    val formattedTime = formatMillisecondsToTimeWithHundredths(timeLeftInMillis)
+    val formattedTime = formatMillisecondsToTimeWithMillis(timeLeftInMillis)
     val focusManager = LocalFocusManager.current
 
     fun startTimer() {
@@ -703,7 +695,7 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
         elapsedTime = 0L
     }
 
-    val formattedStopwatchTime = formatMillisecondsToTimeWithMillis(elapsedTime)
+    val formattedStopwatchTime = formatMillisecondsToTime(elapsedTime)
 
     Scaffold(
         topBar = {
@@ -769,17 +761,17 @@ fun formatMillisecondsToTimeWithMillis(millis: Long): String {
     val totalSeconds = millis / 1000
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
-    val milliseconds = (millis % 1000) / 10 // Get tenths of a second
+    val milliseconds = (millis % 1000) / 100 // Get tenths of a second
     return String.format(Locale.getDefault(), "%02d:%02d.%01d", minutes, seconds, milliseconds)
 }
 
-fun formatMillisecondsToTimeWithHundredths(millis: Long): String {
+/*fun formatMillisecondsToTimeWithHundredths(millis: Long): String {
     val totalSeconds = millis / 1000
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
-    val hundredths = (millis % 1000) / 10 // Two digits
-    return String.format(Locale.getDefault(), "%02d:%02d.%02d", minutes, seconds, hundredths)
-}
+    val hundredths = (millis % 1000) / 100 // Two digits
+    return String.format(Locale.getDefault(), "%02d:%02d.%01d", minutes, seconds, hundredths)
+}*/
 
 // -------------------------------------------------------------
 // --- Reusable Composable ---
