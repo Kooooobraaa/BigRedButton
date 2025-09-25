@@ -468,24 +468,62 @@ fun CountdownTimerScreen(
 
     var hasStarted by remember { mutableStateOf(false) }
 
-    fun startTimer() {
-        countDownTimer?.cancel() // Cancel any existing timer
-        BluetoothMessageManager.clearMessage() // Clear any stale Bluetooth message before starting
-        countDownTimer = object : CountDownTimer(timeLeftInMillis, 100) {
-            override fun onTick(millisUntilFinished: Long) {
-                timeLeftInMillis = millisUntilFinished
-            }
+    // Preparation phase states
+    var showOptionsDialog by remember { mutableStateOf(false) }
+    var isPreparationEnabled by remember { mutableStateOf(false) }
+    var preparationSeconds by remember { mutableIntStateOf(3) } // User-defined seconds
+    var preparationCountdown by remember { mutableIntStateOf(0) }
+    var isInPreparationPhase by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
-            override fun onFinish() {
-                timeLeftInMillis = 0
-                isTimerRunning = false
-                playEndSound() // Play sound when timer hits 0
+    // Modified startTimer to handle preparation phase
+    fun startTimer() {
+        if (isPreparationEnabled) {
+            isInPreparationPhase = true
+            preparationCountdown = preparationSeconds
+            winnerId = ""
+            hasStarted = true
+            coroutineScope.launch {
+                for (i in preparationSeconds downTo 1) {
+                    preparationCountdown = i
+                    delay(1000)
+                }
+                isInPreparationPhase = false
+                // Start the actual timer
+                countDownTimer?.cancel() // Cancel any existing timer
+                BluetoothMessageManager.clearMessage() // Clear any stale Bluetooth message before starting
+                countDownTimer = object : CountDownTimer(timeLeftInMillis, 100) {
+                    override fun onTick(millisUntilFinished: Long) {
+                        timeLeftInMillis = millisUntilFinished
+                    }
+                    override fun onFinish() {
+                        timeLeftInMillis = 0
+                        isTimerRunning = false
+                        playEndSound() // Play sound when timer hits 0
+                    }
+                }.start()
+                isTimerRunning = true
+                winnerId = "" // Reset winner when timer starts
+                BluetoothMessageManager.sendMessageToAll("reset")
             }
-        }.start()
-        isTimerRunning = true
-        hasStarted = true
-        winnerId = "" // Reset winner when timer starts
-        BluetoothMessageManager.sendMessageToAll("reset")
+        } else {
+            countDownTimer?.cancel() // Cancel any existing timer
+            BluetoothMessageManager.clearMessage() // Clear any stale Bluetooth message before starting
+            countDownTimer = object : CountDownTimer(timeLeftInMillis, 100) {
+                override fun onTick(millisUntilFinished: Long) {
+                    timeLeftInMillis = millisUntilFinished
+                }
+                override fun onFinish() {
+                    timeLeftInMillis = 0
+                    isTimerRunning = false
+                    playEndSound() // Play sound when timer hits 0
+                }
+            }.start()
+            isTimerRunning = true
+            hasStarted = true
+            winnerId = "" // Reset winner when timer starts
+            BluetoothMessageManager.sendMessageToAll("reset")
+        }
     }
 
     fun pauseTimer() {
@@ -552,7 +590,13 @@ fun CountdownTimerScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                })
+                },
+                actions = {
+                    Button(onClick = { showOptionsDialog = true }) {
+                        Text("Options")
+                    }
+                }
+            )
         }
     ) { paddingValues ->
         Box(
@@ -620,12 +664,21 @@ fun CountdownTimerScreen(
                     }
                 }
 
-                Text(
-                    text = formattedTime,
-                    fontSize = 72.sp,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                if (isInPreparationPhase) {
+                    Text(
+                        text = "Get Ready: $preparationCountdown",
+                        fontSize = 72.sp,
+                        color = Color.Red,
+                        modifier = Modifier.padding(bottom = 24.dp)
+                    )
+                } else {
+                    Text(
+                        text = formattedTime,
+                        fontSize = 72.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 24.dp)
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(32.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
@@ -662,6 +715,42 @@ fun CountdownTimerScreen(
                         Text("Reset", color = resetTextColor, fontSize = 22.sp)
                     }
                 }
+            }
+            if (showOptionsDialog) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { showOptionsDialog = false },
+                    title = { Text("Options") },
+                    text = {
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                androidx.compose.material3.Checkbox(
+                                    checked = isPreparationEnabled,
+                                    onCheckedChange = { isPreparationEnabled = it }
+                                )
+                                Text("Enable Preparation Phase")
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Preparation Seconds: ")
+                                OutlinedTextField(
+                                    value = preparationSeconds.toString(),
+                                    onValueChange = { value ->
+                                        val intValue = value.toIntOrNull()?.coerceIn(1, 99) ?: 3
+                                        preparationSeconds = intValue
+                                    },
+                                    singleLine = true,
+                                    modifier = Modifier.width(64.dp),
+                                    enabled = isPreparationEnabled,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                                )
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        Button(onClick = { showOptionsDialog = false }) {
+                            Text("OK")
+                        }
+                    }
+                )
             }
         }
     }
