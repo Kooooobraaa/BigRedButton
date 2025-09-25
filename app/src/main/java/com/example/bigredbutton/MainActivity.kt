@@ -678,6 +678,10 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
     // Store the time when the stopwatch was started, or the point from which it was resumed
     var timeReference by remember { mutableLongStateOf(0L) }
 
+    // Winner state
+    var winnerId by remember { mutableStateOf("") }
+    val latestBluetoothMessage by BluetoothMessageManager.latestMessage.collectAsState()
+
     // This LaunchedEffect will run the stopwatch logic when isRunning is true
     LaunchedEffect(isRunning) {
         if (isRunning) {
@@ -701,6 +705,7 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
     fun startStopwatch() {
         isRunning = true
         hasStarted = true
+        winnerId = "" // Reset winner when stopwatch starts
     }
 
     fun pauseStopwatch() {
@@ -712,6 +717,7 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
         isRunning = false
         hasStarted = false
         elapsedTime = 0L
+        winnerId = "" // Reset winner when stopwatch is reset
     }
 
     val formattedStopwatchTime = formatMillisecondsToTimeWithMillisTwoDigits(elapsedTime)
@@ -719,9 +725,18 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
     // Determine background color based on timer state
     val backgroundColor = when {
         isRunning -> Color(0xFF4CAF50) // Green
-        //!isRunning && elapsedTime > 0L && hasStarted -> Color(0xFFFF4E5F) // Red
         !isRunning && hasStarted -> Color(0xFFFFF9C4) // Light yellow
         else -> Color.White // Default before timer starts
+    }
+
+    LaunchedEffect(isRunning, latestBluetoothMessage) {
+        if (isRunning && winnerId.isEmpty() && !latestBluetoothMessage.isNullOrEmpty()) {
+            winnerId = latestBluetoothMessage!!
+            BluetoothMessageManager.clearMessage()
+            // Send winner ID to all connected Arduinos
+            BluetoothMessageManager.sendMessageToAll(winnerId)
+            pauseStopwatch()
+        }
     }
 
     Scaffold(
@@ -754,6 +769,9 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
                 verticalArrangement = Arrangement.Center,
                 modifier = Modifier.align(Alignment.Center)
             ) {
+
+                WinnerDisplay(winnerId)
+
                 Text(
                     text = formattedStopwatchTime,
                     fontSize = 72.sp,
