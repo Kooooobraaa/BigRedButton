@@ -50,6 +50,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -682,6 +683,12 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
     var winnerId by remember { mutableStateOf("") }
     val latestBluetoothMessage by BluetoothMessageManager.latestMessage.collectAsState()
 
+    // Preparation phase states
+    var showOptionsDialog by remember { mutableStateOf(false) }
+    var isPreparationEnabled by remember { mutableStateOf(false) }
+    var preparationCountdown by remember { mutableIntStateOf(0) }
+    var isInPreparationPhase by remember { mutableStateOf(false) }
+
     // This LaunchedEffect will run the stopwatch logic when isRunning is true
     LaunchedEffect(isRunning) {
         if (isRunning) {
@@ -702,10 +709,30 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
 
     var hasStarted by remember { mutableStateOf(false) }
 
+    // Modified startStopwatch to handle preparation phase
+
+    val coroutineScope = rememberCoroutineScope()
+
     fun startStopwatch() {
-        isRunning = true
-        hasStarted = true
-        winnerId = "" // Reset winner when stopwatch starts
+        if (isPreparationEnabled) {
+            isInPreparationPhase = true
+            preparationCountdown = 3
+            winnerId = ""
+            hasStarted = true
+            // Start countdown coroutine
+            coroutineScope.launch {
+                for (i in 3 downTo 1) {
+                    preparationCountdown = i
+                    delay(1000)
+                }
+                isInPreparationPhase = false
+                isRunning = true
+            }
+        } else {
+            isRunning = true
+            hasStarted = true
+            winnerId = ""
+        }
     }
 
     fun pauseStopwatch() {
@@ -747,13 +774,18 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
+                },
+                actions = {
+                    Button(onClick = { showOptionsDialog = true }) {
+                        Text("Options")
+                    }
                 }
             )
         }
     ) { paddingValues ->
         Box(
             modifier = modifier
-                . fillMaxSize()
+                .fillMaxSize()
                 .background(backgroundColor)
                 .padding(paddingValues)
         ) {
@@ -769,15 +801,23 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
                 verticalArrangement = Arrangement.Center,
                 modifier = Modifier.align(Alignment.Center)
             ) {
-
                 WinnerDisplay(winnerId)
-
-                Text(
-                    text = formattedStopwatchTime,
-                    fontSize = 72.sp,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 24.dp)
-                )
+                // Show countdown if in preparation phase
+                if (isInPreparationPhase) {
+                    Text(
+                        text = "Get Ready: $preparationCountdown",
+                        fontSize = 72.sp,
+                        color = Color.Red,
+                        modifier = Modifier.padding(bottom = 24.dp)
+                    )
+                } else {
+                    Text(
+                        text = formattedStopwatchTime,
+                        fontSize = 72.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 24.dp)
+                    )
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     val startPauseBgColor = if (isRunning) Color(0xFFFFCC80) else Color(0xFF4CAF50)
                     val startPauseText = if (isRunning) "Pause" else "Start"
@@ -786,7 +826,7 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
                     val resetTextColor = Color.Black
                     Button(
                         onClick = {
-                            if (isRunning) pauseStopwatch() else startStopwatch()
+                            if (isRunning) pauseStopwatch() else if (!isInPreparationPhase) startStopwatch()
                         },
                         modifier = Modifier
                             .height(64.dp)
@@ -809,6 +849,27 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
                     }
                 }
             }
+            // Options Dialog
+            if (showOptionsDialog) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { showOptionsDialog = false },
+                    title = { Text("Options") },
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            androidx.compose.material3.Checkbox(
+                                checked = isPreparationEnabled,
+                                onCheckedChange = { isPreparationEnabled = it }
+                            )
+                            Text("Enable Preparation Phase (3s)")
+                        }
+                    },
+                    confirmButton = {
+                        Button(onClick = { showOptionsDialog = false }) {
+                            Text("OK")
+                        }
+                    }
+                )
+            }
         }
     }
 }
@@ -821,6 +882,7 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
     return String.format(Locale.getDefault(), "%02d:%02d.%02d", minutes, seconds)
 }*/
 
+// --- Utility and UI Composable ---
 fun formatMillisecondsToTimeWithMillis(millis: Long): String {
     val totalSeconds = millis / 1000
     val minutes = totalSeconds / 60
@@ -1023,3 +1085,5 @@ fun StopwatchScreenPreview() {
         )
     }
 }
+
+
