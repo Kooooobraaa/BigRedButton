@@ -696,20 +696,33 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
         }
     }
 
+    var hasStarted by remember { mutableStateOf(false) }
+
     fun startStopwatch() {
         isRunning = true
+        hasStarted = true
     }
 
     fun pauseStopwatch() {
         isRunning = false
+        hasStarted = true
     }
 
     fun resetStopwatch() {
         isRunning = false
+        hasStarted = false
         elapsedTime = 0L
     }
 
-    val formattedStopwatchTime = formatMillisecondsToTime(elapsedTime)
+    val formattedStopwatchTime = formatMillisecondsToTimeWithMillisTwoDigits(elapsedTime)
+
+    // Determine background color based on timer state
+    val backgroundColor = when {
+        isRunning -> Color(0xFF4CAF50) // Green
+        //!isRunning && elapsedTime > 0L && hasStarted -> Color(0xFFFF4E5F) // Red
+        !isRunning && hasStarted -> Color(0xFFFFF9C4) // Light yellow
+        else -> Color.White // Default before timer starts
+    }
 
     Scaffold(
         topBar = {
@@ -726,6 +739,7 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
         Box(
             modifier = modifier
                 . fillMaxSize()
+                .background(backgroundColor)
                 .padding(paddingValues)
         ) {
             // Device status row
@@ -747,15 +761,33 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
                     modifier = Modifier.padding(bottom = 24.dp)
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    val startPauseBgColor = if (isRunning) Color(0xFFFFCC80) else Color(0xFF4CAF50)
+                    val startPauseText = if (isRunning) "Pause" else "Start"
+                    val startPauseTextColor = Color.Black
+                    val resetBgColor = Color(0xFFFF4E5F)
+                    val resetTextColor = Color.Black
                     Button(
                         onClick = {
                             if (isRunning) pauseStopwatch() else startStopwatch()
-                        }
+                        },
+                        modifier = Modifier
+                            .height(64.dp)
+                            .weight(2f)
+                            .fillMaxWidth()
+                            .padding(start = 6.dp, end = 2.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = startPauseBgColor)
                     ) {
-                        Text(if (isRunning) "Pause" else "Start")
+                        Text(startPauseText, color = startPauseTextColor, fontSize = 28.sp)
                     }
-                    Button(onClick = { resetStopwatch() }) {
-                        Text("Reset")
+                    Button(onClick = { resetStopwatch() },
+                        modifier = Modifier
+                            .height(64.dp)
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(start = 2.dp, end = 6.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = resetBgColor)
+                    ) {
+                        Text("Reset", color = resetTextColor, fontSize = 22.sp)
                     }
                 }
             }
@@ -764,12 +796,12 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
 }
 
 // --- Time Formatters ---
-fun formatMillisecondsToTime(millis: Long): String {
+/*fun formatMillisecondsToTime(millis: Long): String {
     val totalSeconds = millis / 1000
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
-    return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
-}
+    return String.format(Locale.getDefault(), "%02d:%02d.%02d", minutes, seconds)
+}*/
 
 fun formatMillisecondsToTimeWithMillis(millis: Long): String {
     val totalSeconds = millis / 1000
@@ -777,6 +809,14 @@ fun formatMillisecondsToTimeWithMillis(millis: Long): String {
     val seconds = totalSeconds % 60
     val milliseconds = (millis % 1000) / 100 // Get tenths of a second
     return String.format(Locale.getDefault(), "%02d:%02d.%01d", minutes, seconds, milliseconds)
+}
+
+fun formatMillisecondsToTimeWithMillisTwoDigits(millis: Long): String {
+    val totalSeconds = millis / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    val milliseconds = (millis % 1000) / 10 // Get hundredths of a second
+    return String.format(Locale.getDefault(), "%02d:%02d.%02d", minutes, seconds, milliseconds)
 }
 
 /*fun formatMillisecondsToTimeWithHundredths(millis: Long): String {
