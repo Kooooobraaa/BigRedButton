@@ -77,6 +77,7 @@ import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.util.Locale
 import java.util.UUID
+import kotlin.compareTo
 import kotlin.math.max
 
 enum class Screen {
@@ -439,8 +440,8 @@ fun CountdownTimerScreen(
     modifier: Modifier = Modifier
     ) {
     // Input state for user-defined minutes
-    var inputMinutes by remember { mutableStateOf(DEFAULT_INITIAL_MINUTES.toString()) }
-    var inputSeconds by remember { mutableStateOf("0") }
+    var inputMinutes by remember { mutableStateOf("") }
+    var inputSeconds by remember { mutableStateOf("") }
     var initialTimeMillis by remember { mutableLongStateOf(DEFAULT_INITIAL_MINUTES * 60 * 1000L) }
 
     // Timer state
@@ -624,7 +625,7 @@ fun CountdownTimerScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.padding(bottom = 24.dp)
                 ) {
-                    OutlinedTextField(
+                    /*OutlinedTextField(
                         value = inputMinutes,
                         onValueChange = { newValue ->
                             if (newValue.all { it.isDigit() } && newValue.length <= 3) {
@@ -639,8 +640,8 @@ fun CountdownTimerScreen(
                         singleLine = true,
                         modifier = Modifier.width(100.dp),
                         enabled = !isTimerRunning
-                    )
-                    OutlinedTextField(
+                    )*/
+                    /*OutlinedTextField(
                         value = inputSeconds,
                         onValueChange = { newValue ->
                             if (newValue.all { it.isDigit() } && newValue.length <= 2) {
@@ -661,7 +662,7 @@ fun CountdownTimerScreen(
                         enabled = !isTimerRunning
                     ) {
                         Text("Set")
-                    }
+                    }*/
                 }
 
                 if (isInPreparationPhase) {
@@ -722,6 +723,7 @@ fun CountdownTimerScreen(
                     title = { Text("Options") },
                     text = {
                         Column {
+                            // Preparation phase options
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 androidx.compose.material3.Checkbox(
                                     checked = isPreparationEnabled,
@@ -738,16 +740,59 @@ fun CountdownTimerScreen(
                                         preparationSeconds = intValue
                                     },
                                     singleLine = true,
-                                    modifier = Modifier.width(64.dp),
+                                    modifier = Modifier.width(48.dp),
                                     enabled = isPreparationEnabled,
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                                 )
                             }
+                            // Countdown time controls
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Set timer duration: ")
+                                OutlinedTextField(
+                                    value = inputMinutes,
+                                    onValueChange = { newValue ->
+                                        if (newValue.all { it.isDigit() } && newValue.length <= 3) {
+                                            inputMinutes = newValue
+                                        }
+                                    },
+                                    label = { Text("Min") },
+                                    keyboardOptions = KeyboardOptions(
+                                        keyboardType = KeyboardType.Number,
+                                        imeAction = ImeAction.Next
+                                    ),
+                                    singleLine = true,
+                                    modifier = Modifier.width(64.dp)
+                                )
+                                OutlinedTextField(
+                                    value = inputSeconds,
+                                    onValueChange = { newValue ->
+                                        if (newValue.all { it.isDigit() } && newValue.length <= 2) {
+                                            inputSeconds = newValue
+                                        }
+                                    },
+                                    label = { Text("Sec") },
+                                    keyboardOptions = KeyboardOptions(
+                                        keyboardType = KeyboardType.Number,
+                                        imeAction = ImeAction.Done
+                                    ),
+                                    singleLine = true,
+                                    modifier = Modifier.width(64.dp)
+                                )
+                                /*Button(
+                                    onClick = { setTimerDuration() },
+                                    enabled = !isTimerRunning,
+                                    modifier = Modifier.padding(start = 8.dp)
+                                ) {
+                                    Text("Set timer")
+                                }*/
+                            }
                         }
                     },
                     confirmButton = {
-                        Button(onClick = { showOptionsDialog = false }) {
-                            Text("OK")
+                        Button(onClick = {
+                            showOptionsDialog = false
+                            setTimerDuration() }) {
+                            Text("Apply and Close")
                         }
                     }
                 )
