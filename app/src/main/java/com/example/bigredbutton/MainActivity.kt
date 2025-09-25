@@ -686,8 +686,10 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
     // Preparation phase states
     var showOptionsDialog by remember { mutableStateOf(false) }
     var isPreparationEnabled by remember { mutableStateOf(false) }
+    var preparationSeconds by remember { mutableIntStateOf(3) } // User-defined seconds
     var preparationCountdown by remember { mutableIntStateOf(0) }
     var isInPreparationPhase by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
     // This LaunchedEffect will run the stopwatch logic when isRunning is true
     LaunchedEffect(isRunning) {
@@ -711,17 +713,15 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
 
     // Modified startStopwatch to handle preparation phase
 
-    val coroutineScope = rememberCoroutineScope()
-
     fun startStopwatch() {
         if (isPreparationEnabled) {
             isInPreparationPhase = true
-            preparationCountdown = 3
+            preparationCountdown = preparationSeconds
             winnerId = ""
             hasStarted = true
             // Start countdown coroutine
             coroutineScope.launch {
-                for (i in 3 downTo 1) {
+                for (i in preparationSeconds downTo 1) {
                     preparationCountdown = i
                     delay(1000)
                 }
@@ -855,12 +855,28 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
                     onDismissRequest = { showOptionsDialog = false },
                     title = { Text("Options") },
                     text = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            androidx.compose.material3.Checkbox(
-                                checked = isPreparationEnabled,
-                                onCheckedChange = { isPreparationEnabled = it }
-                            )
-                            Text("Enable Preparation Phase (3s)")
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                androidx.compose.material3.Checkbox(
+                                    checked = isPreparationEnabled,
+                                    onCheckedChange = { isPreparationEnabled = it }
+                                )
+                                Text("Enable Preparation Phase")
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Preparation Seconds: ")
+                                OutlinedTextField(
+                                    value = preparationSeconds.toString(),
+                                    onValueChange = { value ->
+                                        val intValue = value.toIntOrNull()?.coerceIn(1, 99) ?: 3
+                                        preparationSeconds = intValue
+                                    },
+                                    singleLine = true,
+                                    modifier = Modifier.width(64.dp),
+                                    enabled = isPreparationEnabled,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                                )
+                            }
                         }
                     },
                     confirmButton = {
@@ -1085,5 +1101,3 @@ fun StopwatchScreenPreview() {
         )
     }
 }
-
-
