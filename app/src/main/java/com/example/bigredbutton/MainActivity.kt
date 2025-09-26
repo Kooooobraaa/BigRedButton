@@ -77,7 +77,6 @@ import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.util.Locale
 import java.util.UUID
-import kotlin.compareTo
 import kotlin.math.max
 
 enum class Screen {
@@ -551,7 +550,7 @@ fun CountdownTimerScreen(
 
     // Bluetooth message winner logic
     LaunchedEffect(isTimerRunning, latestBluetoothMessage) {
-        if (isTimerRunning && winnerId.isEmpty() && !latestBluetoothMessage.isNullOrEmpty()) {
+        if (isTimerRunning && hasStarted && winnerId.isEmpty() && !latestBluetoothMessage.isNullOrEmpty()) {
             winnerId = latestBluetoothMessage!!
             BluetoothMessageManager.clearMessage()
             // Send winner ID to all connected Arduinos
@@ -845,33 +844,33 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
 
     var hasStarted by remember { mutableStateOf(false) }
 
-    // Modified startStopwatch to handle preparation phase
-
     fun startStopwatch() {
         if (isPreparationEnabled) {
             isInPreparationPhase = true
             preparationCountdown = preparationSeconds
             winnerId = ""
-            hasStarted = true
-            // Start countdown coroutine
             coroutineScope.launch {
                 for (i in preparationSeconds downTo 1) {
                     preparationCountdown = i
                     delay(1000)
                 }
                 isInPreparationPhase = false
+                BluetoothMessageManager.clearMessage()
                 isRunning = true
+                hasStarted = true
             }
         } else {
+            BluetoothMessageManager.sendMessageToAll("reset")
+            BluetoothMessageManager.clearMessage()
+            winnerId = ""
             isRunning = true
             hasStarted = true
-            winnerId = ""
         }
     }
 
     fun pauseStopwatch() {
         isRunning = false
-        hasStarted = true
+        //hasStarted = true
     }
 
     fun resetStopwatch() {
@@ -879,6 +878,7 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
         hasStarted = false
         elapsedTime = 0L
         winnerId = "" // Reset winner when stopwatch is reset
+        BluetoothMessageManager.sendMessageToAll("reset")
     }
 
     val formattedStopwatchTime = formatMillisecondsToTimeWithMillisTwoDigits(elapsedTime)
@@ -891,7 +891,7 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
     }
 
     LaunchedEffect(isRunning, latestBluetoothMessage) {
-        if (isRunning && winnerId.isEmpty() && !latestBluetoothMessage.isNullOrEmpty()) {
+        if (isRunning && hasStarted && winnerId.isEmpty() && !latestBluetoothMessage.isNullOrEmpty()) {
             winnerId = latestBluetoothMessage!!
             BluetoothMessageManager.clearMessage()
             // Send winner ID to all connected Arduinos
