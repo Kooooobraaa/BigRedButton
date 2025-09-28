@@ -7,12 +7,12 @@ const String buttonID = "BigRedB_1"; // "BigRedB_2" , "BigRedB_3"
 // Consts and variables needed
 const int buttonPin = 2;            // Button is connected to digital pin 2
 bool lastButtonState = HIGH;        // Initial state (not pressed)
-const int ledPin = 4;               // LED is connected to digital pin 4
-const int buzzPin = 6;              // Buzz speaker is connected to digital pin 6
+const int ledPin = 3;               // LED is connected to digital pin 3
+const int buzzPin = 4;              // Buzz speaker is connected to digital pin 4
 
 bool gameStart = false;             // If the games can start
 
-const int btStatePin = 8;           // Bluetooth module HC-05 STATE pin
+const int btStatePin = 5;           // Bluetooth module HC-05 STATE to digital pin 5
 const String resetString = "reset"; // Reset message to restore the button for next game
 const int blinkNumber = 5;          // How many times it will slowly blink
 bool wasConnected = false;          // Tracks previous connection state
@@ -93,12 +93,13 @@ void loop() {
 
     if (incoming == buttonID) {
       digitalWrite(ledPin, HIGH);   // light up if winner
-      digitalWrite(buzzPin, HIGH);  // buzz up if winner
-      delay(500);
-      digitalWrite(buzzPin, LOW);   // turn of buzzer after some time
+      //digitalWrite(buzzPin, HIGH);  // buzz up if winner
+      tone(buzzPin,1000,1000);
+      //delay(500);
+      //digitalWrite(buzzPin, LOW);   // turn of buzzer after some time
     } else {
       digitalWrite(ledPin, LOW);    // turn off otherwise
-      digitalWrite(buzzPin, LOW);   // no buzz otherwise
+      //digitalWrite(buzzPin, LOW);   // no buzz otherwise
     }
 
     if (incoming == resetString) {
