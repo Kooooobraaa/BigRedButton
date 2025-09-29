@@ -71,6 +71,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.bigredbutton.ui.theme.BigRedButtonTheme
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -446,7 +447,7 @@ fun CountdownTimerScreen(
     // Timer state
     var timeLeftInMillis by remember { mutableLongStateOf(initialTimeMillis) }
     var isTimerRunning by remember { mutableStateOf(false) }
-    var countDownTimer: CountDownTimer? by remember { mutableStateOf(null) }
+    var simpleCountdownTimer: SimpleCountdownTimer? by remember { mutableStateOf(null) }
 
     // Winner state
     var winnerId by remember { mutableStateOf("") }
@@ -458,7 +459,7 @@ fun CountdownTimerScreen(
 
     fun playEndSound() {
         try {
-            val mediaPlayer = MediaPlayer.create(context, R.raw.timer_end)
+            val mediaPlayer = MediaPlayer.create(context.applicationContext, R.raw.timer_end)
             mediaPlayer.setOnCompletionListener { it.release() }
             mediaPlayer.start()
         } catch (e: Exception) {
@@ -475,64 +476,78 @@ fun CountdownTimerScreen(
     var preparationCountdown by remember { mutableIntStateOf(0) }
     var isInPreparationPhase by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+    var timerJob by remember { mutableStateOf<Job?>(null) }
 
-    // Modified startTimer to handle preparation phase
     fun startTimer() {
-        if (isPreparationEnabled) {
-            isInPreparationPhase = true
-            preparationCountdown = preparationSeconds
-            winnerId = ""
-            hasStarted = true
-            coroutineScope.launch {
-                for (i in preparationSeconds downTo 1) {
-                    preparationCountdown = i
-                    delay(1000)
-                }
-                isInPreparationPhase = false
-                // Start the actual timer
-                countDownTimer?.cancel() // Cancel any existing timer
-                BluetoothMessageManager.clearMessage() // Clear any stale Bluetooth message before starting
-                countDownTimer = object : CountDownTimer(timeLeftInMillis, 100) {
-                    override fun onTick(millisUntilFinished: Long) {
-                        timeLeftInMillis = millisUntilFinished
+        try {
+            timerJob?.cancel()
+            if (isPreparationEnabled) {
+                isInPreparationPhase = true
+                preparationCountdown = preparationSeconds
+                winnerId = ""
+                hasStarted = true
+                timerJob = coroutineScope.launch {
+                    try {
+                        for (i in preparationSeconds downTo 1) {
+                            preparationCountdown = i
+                            delay(1000)
+                        }
+                        isInPreparationPhase = false
+                        simpleCountdownTimer?.pause()
+                        //BluetoothMessageManager.clearMessage()
+                        simpleCountdownTimer = SimpleCountdownTimer(
+                            totalMillis = timeLeftInMillis,
+                            intervalMillis = 100L,
+                            onTick = { millisUntilFinished ->
+                                timeLeftInMillis = millisUntilFinished
+                            },
+                            onFinish = {
+                                timeLeftInMillis = 0
+                                isTimerRunning = false
+                                try { playEndSound() } catch (e: Exception) { e.printStackTrace() }
+                            }
+                        )
+                        simpleCountdownTimer?.start()
+                        isTimerRunning = true
+                        winnerId = ""
+                        //BluetoothMessageManager.sendMessageToAll("reset")
+                    } catch (e: Exception) {
+                        e.printStackTrace()
                     }
-                    override fun onFinish() {
+                }
+            } else {
+                simpleCountdownTimer?.pause()
+                //BluetoothMessageManager.clearMessage()
+                simpleCountdownTimer = SimpleCountdownTimer(
+                    totalMillis = timeLeftInMillis,
+                    intervalMillis = 100L,
+                    onTick = { millisUntilFinished ->
+                        timeLeftInMillis = millisUntilFinished
+                    },
+                    onFinish = {
                         timeLeftInMillis = 0
                         isTimerRunning = false
-                        playEndSound() // Play sound when timer hits 0
+                        try { playEndSound() } catch (e: Exception) { e.printStackTrace() }
                     }
-                }.start()
+                )
+                simpleCountdownTimer?.start()
                 isTimerRunning = true
-                winnerId = "" // Reset winner when timer starts
-                BluetoothMessageManager.sendMessageToAll("reset")
+                hasStarted = true
+                winnerId = ""
+                //BluetoothMessageManager.sendMessageToAll("reset")
             }
-        } else {
-            countDownTimer?.cancel() // Cancel any existing timer
-            BluetoothMessageManager.clearMessage() // Clear any stale Bluetooth message before starting
-            countDownTimer = object : CountDownTimer(timeLeftInMillis, 100) {
-                override fun onTick(millisUntilFinished: Long) {
-                    timeLeftInMillis = millisUntilFinished
-                }
-                override fun onFinish() {
-                    timeLeftInMillis = 0
-                    isTimerRunning = false
-                    playEndSound() // Play sound when timer hits 0
-                }
-            }.start()
-            isTimerRunning = true
-            hasStarted = true
-            winnerId = "" // Reset winner when timer starts
-            BluetoothMessageManager.sendMessageToAll("reset")
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
     fun pauseTimer() {
-        countDownTimer?.cancel()
+        simpleCountdownTimer?.pause()
         isTimerRunning = false
     }
 
     fun resetTimer() {
-        countDownTimer?.cancel()
+        simpleCountdownTimer?.pause()
         timeLeftInMillis = initialTimeMillis // Reset to the user-set or default initial time
         isTimerRunning = false
         hasStarted = false
@@ -562,7 +577,8 @@ fun CountdownTimerScreen(
     // Ensure timer is properly cancelled when the composable leaves the composition
     DisposableEffect(Unit) {
         onDispose {
-            countDownTimer?.cancel()
+            simpleCountdownTimer?.pause()
+            timerJob?.cancel()
         }
     }
 
