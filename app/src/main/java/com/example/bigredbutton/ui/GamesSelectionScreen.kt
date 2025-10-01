@@ -18,6 +18,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.tooling.preview.Preview
+import com.example.bigredbutton.ui.theme.BigRedButtonTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,5 +61,13 @@ fun GamesSelectionScreen(
                 Text("Stopwatch")
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun GamesSelectionScreenPreview() {
+    BigRedButtonTheme {
+        GamesSelectionScreen(onCountdownSelected = {}, onStopwatchSelected = {}, onNavigateBack = {})
     }
 }

@@ -58,6 +58,7 @@ import kotlinx.coroutines.launch
 const val DEFAULT_INITIAL_MINUTES = 2L
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Suppress("UNUSED_PARAMETER")
 @Composable
 fun CountdownTimerScreen(
     onNavigateBack: () -> Unit,
@@ -85,7 +86,7 @@ fun CountdownTimerScreen(
             val mediaPlayer = MediaPlayer.create(context, R.raw.timer_end)
             mediaPlayer.setOnCompletionListener { it.release() }
             mediaPlayer.start()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // ignore
         }
     }
@@ -364,3 +365,20 @@ fun CountdownTimerScreen(
     }
 }
 
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+fun CountdownTimerScreenPreview() {
+    val mockDevices = listOf(
+        com.example.bigredbutton.models.DeviceState(device = null, name = "BigRedB_1", address = "00:11:22:33:44:55", isConnected = true),
+        com.example.bigredbutton.models.DeviceState(device = null, name = "BigRedB_2", address = "Unavailable", isConnected = false),
+        com.example.bigredbutton.models.DeviceState(device = null, name = "BigRedB_3", address = "Unavailable", isConnected = false)
+    )
+
+    com.example.bigredbutton.ui.theme.BigRedButtonTheme {
+        CountdownTimerScreen(
+            onNavigateBack = {},
+            deviceStates = mockDevices,
+            updateDeviceState = { _, _ -> }
+        )
+    }
+}

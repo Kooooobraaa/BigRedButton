@@ -208,3 +208,22 @@ fun ConnectButtonsScreen(
     }
 }
 
+@Preview(showBackground = true)
+@Composable
+fun ConnectButtonsScreenPreview() {
+    val mockDevices = listOf(
+        com.example.bigredbutton.models.DeviceState(device = null, name = "BigRedB_1", address = "00:11:22:33:44:55", isConnected = true),
+        com.example.bigredbutton.models.DeviceState(device = null, name = "BigRedB_2", address = "Unavailable", isConnected = false),
+        com.example.bigredbutton.models.DeviceState(device = null, name = "BigRedB_3", address = "Unavailable", isConnected = false)
+    )
+
+    com.example.bigredbutton.ui.theme.BigRedButtonTheme {
+        ConnectButtonsScreen(
+            onNavigateBack = {},
+            onOpenBluetoothSettings = {},
+            modifier = Modifier,
+            deviceStates = mockDevices,
+            updateDeviceState = { _, _ -> }
+        )
+    }
+}
