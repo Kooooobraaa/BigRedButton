@@ -36,7 +36,7 @@ object BluetoothMessageManager {
                 val out: OutputStream = socket.outputStream
                 out.write((message + "\n").toByteArray())
                 out.flush()
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // Optionally remove socket if error occurs
             }
         }
@@ -53,7 +53,7 @@ object BluetoothMessageManager {
                         _latestMessage.value = line.trim()
                     }
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // Exception caught, can log if needed
             } finally {
                 removeSocket(socket)
