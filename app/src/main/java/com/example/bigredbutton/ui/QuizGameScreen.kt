@@ -73,6 +73,17 @@ fun QuizGameScreen(
 
     val latestBluetoothMessage by BluetoothMessageManager.latestMessage.collectAsState()
 
+    // Score dialog state
+    var showScoreDialog by remember { mutableStateOf(false) }
+    // Map device name to score
+    val deviceScores = remember { mutableStateMapOf<String, Int>() }
+    // Initialize scores for all devices if not present
+    LaunchedEffect(deviceStates) {
+        deviceStates.forEach { device ->
+            if (deviceScores[device.name] == null) deviceScores[device.name] = 0
+        }
+    }
+
     fun startTimer() {
         if (isPreparationEnabled) {
             isInPreparationPhase = true
@@ -162,9 +173,14 @@ fun QuizGameScreen(
                     }
                 },
                 actions = {
+                    Button(onClick = { showScoreDialog = true },
+                    modifier = Modifier.padding(end = 8.dp)) {
+                        Text("Score")
+                    }
                     Button(onClick = { showOptionsDialog = true }) {
                         Text("Options")
                     }
+
                 }
             )
         }
@@ -239,6 +255,39 @@ fun QuizGameScreen(
                     }
                 }
             }
+
+            if (showScoreDialog) {
+                AlertDialog(
+                    onDismissRequest = { showScoreDialog = false },
+                    title = { Text("Scores") },
+                    text = {
+                        Column {
+                            deviceStates.forEach { device ->
+                                val score = deviceScores[device.name] ?: 0
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
+                                    Text(device.name, modifier = Modifier.weight(1f))
+                                    IconButton(onClick = { deviceScores[device.name] = score - 1 }) {
+                                        Text("-")
+                                    }
+                                    Text(score.toString(), modifier = Modifier.width(32.dp), fontSize = 20.sp)
+                                    IconButton(onClick = { deviceScores[device.name] = score + 1 }) {
+                                        Text("+")
+                                    }
+                                    Button(onClick = { deviceScores[device.name] = 0 }, modifier = Modifier.padding(start = 8.dp)) {
+                                        Text("Reset")
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        Button(onClick = { showScoreDialog = false }) {
+                            Text("Close")
+                        }
+                    }
+                )
+            }
+
             if (showOptionsDialog) {
                 AlertDialog(
                     onDismissRequest = { showOptionsDialog = false },
