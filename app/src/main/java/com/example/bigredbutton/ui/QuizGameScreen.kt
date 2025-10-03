@@ -17,6 +17,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.bigredbutton.BluetoothMessageManager
 import com.example.bigredbutton.models.DeviceState
 import com.example.bigredbutton.ui.theme.BigRedButtonTheme
 import kotlinx.coroutines.delay
@@ -70,6 +71,8 @@ fun QuizGameScreen(
     var isInPreparationPhase by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
+    val latestBluetoothMessage by BluetoothMessageManager.latestMessage.collectAsState()
+
     fun startTimer() {
         if (isPreparationEnabled) {
             isInPreparationPhase = true
@@ -83,6 +86,7 @@ fun QuizGameScreen(
                 }
                 isInPreparationPhase = false
                 countDownTimer?.cancel()
+                BluetoothMessageManager.clearMessage()
                 countDownTimer = object : CountDownTimer(timeLeftInMillis, 100) {
                     override fun onTick(millisUntilFinished: Long) {
                         timeLeftInMillis = millisUntilFinished
@@ -96,9 +100,11 @@ fun QuizGameScreen(
                 }.start()
                 isTimerRunning = true
                 winnerId = ""
+                BluetoothMessageManager.sendMessageToAll("reset")
             }
         } else {
             countDownTimer?.cancel()
+            BluetoothMessageManager.clearMessage()
             countDownTimer = object : CountDownTimer(timeLeftInMillis, 100) {
                 override fun onTick(millisUntilFinished: Long) {
                     timeLeftInMillis = millisUntilFinished
@@ -113,6 +119,7 @@ fun QuizGameScreen(
             isTimerRunning = true
             hasStarted = true
             winnerId = ""
+            BluetoothMessageManager.sendMessageToAll("reset")
         }
     }
 
@@ -127,6 +134,7 @@ fun QuizGameScreen(
         isTimerRunning = false
         hasStarted = false
         winnerId = ""
+        BluetoothMessageManager.sendMessageToAll("reset")
     }
 
     fun setTimerDuration() {
@@ -178,12 +186,25 @@ fun QuizGameScreen(
                 verticalArrangement = Arrangement.Center,
                 modifier = Modifier.align(Alignment.Center)
             ) {
-                Text(
-                    text = formattedTime,
-                    fontSize = 72.sp,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 24.dp)
-                )
+
+                WinnerDisplay(winnerId)
+
+                if (isInPreparationPhase) {
+                    Text(
+                        text = "Get Ready: $preparationCountdown",
+                        fontSize = 72.sp,
+                        color = Color.Red,
+                        modifier = Modifier.padding(bottom = 24.dp)
+                    )
+                } else {
+                    Text(
+                        text = formattedTime,
+                        fontSize = 72.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 24.dp)
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(32.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
                     val startPauseBgColor = if (isTimerRunning) Color(0xFFFFCC80) else Color(0xFF4CAF50)
@@ -191,19 +212,30 @@ fun QuizGameScreen(
                     val startPauseTextColor = Color.Black
                     val resetBgColor = Color(0xFFFF4E5F)
                     val resetTextColor = Color.Black
-                    Button(
+                    OutlinedButton(
                         onClick = {
                             if (isTimerRunning) pauseTimer() else startTimer()
                         },
+                        enabled = timeLeftInMillis > 0,
+                        modifier = Modifier
+                            .height(64.dp)
+                            .weight(2f)
+                            .fillMaxWidth()
+                            .padding(start = 6.dp, end = 2.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = startPauseBgColor)
                     ) {
-                        Text(startPauseText, color = startPauseTextColor)
+                        Text(startPauseText, color = startPauseTextColor, fontSize = 28.sp)
                     }
-                    Button(
+                    OutlinedButton(
                         onClick = { resetTimer() },
+                        modifier = Modifier
+                            .height(64.dp)
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(start = 2.dp, end = 6.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = resetBgColor)
                     ) {
-                        Text("Reset", color = resetTextColor)
+                        Text("Reset", color = resetTextColor, fontSize = 22.sp)
                     }
                 }
             }
@@ -278,6 +310,24 @@ fun QuizGameScreen(
                     }
                 )
             }
+        }
+    }
+    LaunchedEffect(isTimerRunning, latestBluetoothMessage) {
+        if (isTimerRunning && hasStarted && winnerId.isEmpty() && !latestBluetoothMessage.isNullOrEmpty()) {
+            winnerId = latestBluetoothMessage!!
+            BluetoothMessageManager.clearMessage()
+            BluetoothMessageManager.sendMessageToAll(winnerId)
+            pauseTimer()
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            countDownTimer?.cancel()
+        }
+    }
+    LaunchedEffect(initialTimeMillis) {
+        if (!isTimerRunning) {
+            timeLeftInMillis = initialTimeMillis
         }
     }
 }

@@ -2,26 +2,9 @@ package com.example.bigredbutton.ui
 
 import android.os.SystemClock
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -196,7 +179,7 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
                     val startPauseTextColor = Color.Black
                     val resetBgColor = Color(0xFFFF4E5F)
                     val resetTextColor = Color.Black
-                    Button(
+                    OutlinedButton(
                         onClick = {
                             if (isRunning) pauseStopwatch() else if (!isInPreparationPhase) startStopwatch()
                         },
@@ -209,7 +192,7 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
                     ) {
                         Text(startPauseText, color = startPauseTextColor, fontSize = 28.sp)
                     }
-                    Button(onClick = { resetStopwatch() },
+                    OutlinedButton(onClick = { resetStopwatch() },
                         modifier = Modifier
                             .height(64.dp)
                             .weight(1f)
