@@ -26,7 +26,8 @@ import com.example.bigredbutton.ui.theme.BigRedButtonTheme
 fun GamesSelectionScreen(
     onCountdownSelected: () -> Unit,
     onStopwatchSelected: () -> Unit,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onQuizGameSelected: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -60,6 +61,12 @@ fun GamesSelectionScreen(
             ) {
                 Text("Stopwatch")
             }
+            Button(
+                onClick = onQuizGameSelected,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+            ) {
+                Text("Quiz Game")
+            }
         }
     }
 }
@@ -71,6 +78,8 @@ fun GamesSelectionScreenPreview() {
         GamesSelectionScreen(
             onCountdownSelected = {},
             onStopwatchSelected = {},
-            onNavigateBack = {})
+            onNavigateBack = {},
+            onQuizGameSelected = {}
+        )
     }
 }
