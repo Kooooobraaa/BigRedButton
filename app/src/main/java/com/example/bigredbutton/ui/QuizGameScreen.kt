@@ -11,6 +11,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -22,6 +25,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import com.example.bigredbutton.R
+import androidx.compose.ui.tooling.preview.Preview
+import com.example.bigredbutton.util.formatMillisecondsToTimeWithMillis
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,7 +46,7 @@ fun QuizGameScreen(
 
     var winnerId by remember { mutableStateOf("") }
 
-    val formattedTime = "${timeLeftInMillis / 1000}s"
+    val formattedTime = formatMillisecondsToTimeWithMillis(timeLeftInMillis)
     val focusManager = LocalFocusManager.current
     val context = LocalContext.current
 
@@ -149,9 +154,9 @@ fun QuizGameScreen(
                     }
                 },
                 actions = {
-                    // Button(onClick = { showOptionsDialog = true }) {
-                    //     Text("Options")
-                    // }
+                    Button(onClick = { showOptionsDialog = true }) {
+                        Text("Options")
+                    }
                 }
             )
         }
@@ -162,6 +167,12 @@ fun QuizGameScreen(
                 .background(backgroundColor)
                 .padding(paddingValues)
         ) {
+            DeviceStatusRow(
+                deviceStates,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 16.dp)
+            )
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
@@ -196,6 +207,94 @@ fun QuizGameScreen(
                     }
                 }
             }
+            if (showOptionsDialog) {
+                AlertDialog(
+                    onDismissRequest = { showOptionsDialog = false },
+                    title = { Text("Options") },
+                    text = {
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(
+                                    checked = isPreparationEnabled,
+                                    onCheckedChange = { isPreparationEnabled = it }
+                                )
+                                Text("Enable Preparation Phase")
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Preparation Seconds: ")
+                                OutlinedTextField(
+                                    value = preparationSeconds.toString(),
+                                    onValueChange = { value ->
+                                        val intValue = value.toIntOrNull()?.coerceIn(1, 99) ?: 3
+                                        preparationSeconds = intValue
+                                    },
+                                    singleLine = true,
+                                    modifier = Modifier.width(48.dp),
+                                    enabled = isPreparationEnabled,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                                )
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Set round duration: ")
+                                OutlinedTextField(
+                                    value = inputMinutes,
+                                    onValueChange = { newValue ->
+                                        if (newValue.all { it.isDigit() } && newValue.length <= 3) {
+                                            inputMinutes = newValue
+                                        }
+                                    },
+                                    label = { Text("Min") },
+                                    keyboardOptions = KeyboardOptions(
+                                        keyboardType = KeyboardType.Number,
+                                        imeAction = ImeAction.Next
+                                    ),
+                                    singleLine = true,
+                                    modifier = Modifier.width(64.dp)
+                                )
+                                OutlinedTextField(
+                                    value = inputSeconds,
+                                    onValueChange = { newValue ->
+                                        if (newValue.all { it.isDigit() } && newValue.length <= 2) {
+                                            inputSeconds = newValue
+                                        }
+                                    },
+                                    label = { Text("Sec") },
+                                    keyboardOptions = KeyboardOptions(
+                                        keyboardType = KeyboardType.Number,
+                                        imeAction = ImeAction.Done
+                                    ),
+                                    singleLine = true,
+                                    modifier = Modifier.width(64.dp)
+                                )
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        Button(onClick = {
+                            showOptionsDialog = false
+                            setTimerDuration() }) {
+                            Text("Apply and Close")
+                        }
+                    }
+                )
+            }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun QuizGameScreenPreview() {
+    val mockDevices = listOf(
+        DeviceState(device = null, name = "BigRedB_1", address = "00:11:22:33:44:55", isConnected = true),
+        DeviceState(device = null, name = "BigRedB_2", address = "Unavailable", isConnected = false),
+        DeviceState(device = null, name = "BigRedB_3", address = "Unavailable", isConnected = false)
+    )
+    BigRedButtonTheme {
+        QuizGameScreen(
+            onNavigateBack = {},
+            deviceStates = mockDevices,
+            updateDeviceState = { _, _ -> }
+        )
     }
 }
