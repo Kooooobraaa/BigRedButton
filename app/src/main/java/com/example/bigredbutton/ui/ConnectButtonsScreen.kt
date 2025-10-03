@@ -45,6 +45,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.util.UUID
+import androidx.compose.ui.tooling.preview.Preview
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,7 +68,9 @@ fun ConnectButtonsScreen(
         } else {
             true
         }
-    } else false
+    } else {
+        false
+    }
     val bluetoothManager = if (!isInPreview) context.getSystemService(BluetoothManager::class.java) else null
     val bluetoothAdapter = if (!isInPreview && bluetoothPermissionGranted) bluetoothManager?.adapter else null
     val pairedDevices = if (!isInPreview) {
@@ -212,9 +215,9 @@ fun ConnectButtonsScreen(
 @Composable
 fun ConnectButtonsScreenPreview() {
     val mockDevices = listOf(
-        com.example.bigredbutton.models.DeviceState(device = null, name = "BigRedB_1", address = "00:11:22:33:44:55", isConnected = true),
-        com.example.bigredbutton.models.DeviceState(device = null, name = "BigRedB_2", address = "Unavailable", isConnected = false),
-        com.example.bigredbutton.models.DeviceState(device = null, name = "BigRedB_3", address = "Unavailable", isConnected = false)
+        DeviceState(device = null, name = "BigRedB_1", address = "00:11:22:33:44:55", isConnected = true),
+        DeviceState(device = null, name = "BigRedB_2", address = "Unavailable", isConnected = false),
+        DeviceState(device = null, name = "BigRedB_3", address = "Unavailable", isConnected = false)
     )
 
     com.example.bigredbutton.ui.theme.BigRedButtonTheme {

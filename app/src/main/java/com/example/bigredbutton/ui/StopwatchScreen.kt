@@ -44,6 +44,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.tooling.preview.Preview
 import com.example.bigredbutton.BluetoothMessageManager
 import com.example.bigredbutton.models.DeviceState
 import com.example.bigredbutton.util.formatMillisecondsToTimeWithMillisTwoDigits
@@ -261,13 +262,13 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
     }
 }
 
-@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Preview(showBackground = true)
 @Composable
 fun StopwatchScreenPreview() {
     val mockDevices = listOf(
-        com.example.bigredbutton.models.DeviceState(device = null, name = "BigRedB_1", address = "00:11:22:33:44:55", isConnected = true),
-        com.example.bigredbutton.models.DeviceState(device = null, name = "BigRedB_2", address = "Unavailable", isConnected = false),
-        com.example.bigredbutton.models.DeviceState(device = null, name = "BigRedB_3", address = "Unavailable", isConnected = false)
+        DeviceState(device = null, name = "BigRedB_1", address = "00:11:22:33:44:55", isConnected = true),
+        DeviceState(device = null, name = "BigRedB_2", address = "Unavailable", isConnected = false),
+        DeviceState(device = null, name = "BigRedB_3", address = "Unavailable", isConnected = false)
     )
 
     com.example.bigredbutton.ui.theme.BigRedButtonTheme {

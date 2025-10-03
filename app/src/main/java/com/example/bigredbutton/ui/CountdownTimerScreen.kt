@@ -54,6 +54,7 @@ import com.example.bigredbutton.models.DeviceState
 import com.example.bigredbutton.util.formatMillisecondsToTimeWithMillis
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.ui.tooling.preview.Preview
 
 const val DEFAULT_INITIAL_MINUTES = 2L
 
@@ -365,13 +366,13 @@ fun CountdownTimerScreen(
     }
 }
 
-@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Preview(showBackground = true)
 @Composable
 fun CountdownTimerScreenPreview() {
     val mockDevices = listOf(
-        com.example.bigredbutton.models.DeviceState(device = null, name = "BigRedB_1", address = "00:11:22:33:44:55", isConnected = true),
-        com.example.bigredbutton.models.DeviceState(device = null, name = "BigRedB_2", address = "Unavailable", isConnected = false),
-        com.example.bigredbutton.models.DeviceState(device = null, name = "BigRedB_3", address = "Unavailable", isConnected = false)
+        DeviceState(device = null, name = "BigRedB_1", address = "00:11:22:33:44:55", isConnected = true),
+        DeviceState(device = null, name = "BigRedB_2", address = "Unavailable", isConnected = false),
+        DeviceState(device = null, name = "BigRedB_3", address = "Unavailable", isConnected = false)
     )
 
     com.example.bigredbutton.ui.theme.BigRedButtonTheme {

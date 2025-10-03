@@ -68,6 +68,9 @@ fun GamesSelectionScreen(
 @Composable
 fun GamesSelectionScreenPreview() {
     BigRedButtonTheme {
-        GamesSelectionScreen(onCountdownSelected = {}, onStopwatchSelected = {}, onNavigateBack = {})
+        GamesSelectionScreen(
+            onCountdownSelected = {},
+            onStopwatchSelected = {},
+            onNavigateBack = {})
     }
 }
