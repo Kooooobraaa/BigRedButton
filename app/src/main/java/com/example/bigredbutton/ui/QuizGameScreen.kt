@@ -14,7 +14,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.bigredbutton.BluetoothMessageManager
@@ -83,6 +82,13 @@ fun QuizGameScreen(
             if (deviceScores[device.name] == null) deviceScores[device.name] = 0
         }
     }
+
+    // State for answer correctness dialog
+    var showAnswerDialog by remember { mutableStateOf(false) }
+
+    // Track devices that are blocked from winning until next round
+    val blockedDevices = remember { mutableStateOf(mutableSetOf<String>()) }
+    var roundNumber by remember { mutableIntStateOf(1) }
 
     fun startTimer() {
         if (isPreparationEnabled) {
@@ -359,14 +365,69 @@ fun QuizGameScreen(
                     }
                 )
             }
+
+            // Winner/answer dialog
+            if (showAnswerDialog && winnerId.isNotEmpty()) {
+                AlertDialog(
+                    onDismissRequest = { showAnswerDialog = false },
+                    title = { Text("Was the answer correct?") },
+                    text = { Text("Device: $winnerId") },
+                    confirmButton = {
+                        Button(onClick = {
+                            // Add 2 points for correct answer
+                            deviceScores[winnerId] = (deviceScores[winnerId] ?: 0) + 2
+                            showAnswerDialog = false
+                            winnerId = ""
+                        }) {
+                            Text("Yes")
+                        }
+                    },
+                    dismissButton = {
+                        Button(onClick = {
+                            // Subtract 1 point for wrong answer and block device
+                            deviceScores[winnerId] = (deviceScores[winnerId] ?: 0) - 1
+                            blockedDevices.value.add(winnerId)
+                            showAnswerDialog = false
+                            winnerId = ""
+                        }) {
+                            Text("No")
+                        }
+                    }
+                )
+            }
+
+            // Round info and next round button
+            Column(
+                modifier = Modifier.align(Alignment.TopEnd).padding(16.dp),
+                horizontalAlignment = Alignment.End
+            ) {
+                Text("Round: $roundNumber", style = MaterialTheme.typography.titleMedium)
+                Button(onClick = {
+                    roundNumber++
+                    blockedDevices.value.clear()
+                    winnerId = ""
+                    hasStarted = false
+                    isTimerRunning = false
+                    timeLeftInMillis = initialTimeMillis
+                }, modifier = Modifier.padding(top = 8.dp)) {
+                    Text("Start Next Round")
+                }
+            }
         }
     }
     LaunchedEffect(isTimerRunning, latestBluetoothMessage) {
         if (isTimerRunning && hasStarted && winnerId.isEmpty() && !latestBluetoothMessage.isNullOrEmpty()) {
-            winnerId = latestBluetoothMessage!!
-            BluetoothMessageManager.clearMessage()
-            BluetoothMessageManager.sendMessageToAll(winnerId)
-            pauseTimer()
+            val candidate = latestBluetoothMessage!!
+            if (!blockedDevices.value.contains(candidate)) {
+                winnerId = candidate
+                BluetoothMessageManager.clearMessage()
+                BluetoothMessageManager.sendMessageToAll(winnerId)
+                pauseTimer()
+                showAnswerDialog = true
+            } else {
+                // Ignore blocked device, clear message and keep timer running
+                BluetoothMessageManager.clearMessage()
+            }
         }
     }
     DisposableEffect(Unit) {
