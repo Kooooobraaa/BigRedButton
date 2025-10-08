@@ -2,7 +2,7 @@
 
 // Unique ID for this Arduino, that will represent button
 // This ID must be "hard coded" so it is unique for the device
-const String buttonID = "BigRedB_1"; // "BigRedB_2" , "BigRedB_3"
+const String buttonID = "BigRedB_2"; // "" , "BigRedB_3" "BigRedB_1"
 
 // Consts and variables needed
 const int buttonPin = 2;            // Button is connected to digital pin 2
@@ -93,13 +93,13 @@ void loop() {
 
     if (incoming == buttonID) {
       digitalWrite(ledPin, HIGH);   // light up if winner
-      //digitalWrite(buzzPin, HIGH);  // buzz up if winner
-      tone(buzzPin,1000,1000);
-      //delay(500);
-      //digitalWrite(buzzPin, LOW);   // turn of buzzer after some time
+      digitalWrite(buzzPin, HIGH);  // buzz up if winner
+      //tone(buzzPin,1000,1000);
+      delay(1000);
+      digitalWrite(buzzPin, LOW);   // turn of buzzer after some time
     } else {
       digitalWrite(ledPin, LOW);    // turn off otherwise
-      //digitalWrite(buzzPin, LOW);   // no buzz otherwise
+      digitalWrite(buzzPin, LOW);   // no buzz otherwise
     }
 
     if (incoming == resetString) {
