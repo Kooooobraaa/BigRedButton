@@ -2,7 +2,7 @@
 
 // Unique ID for this Arduino, that will represent button
 // This ID must be "hard coded" so it is unique for the device
-const String buttonID = "BigRedB_2"; // "" , "BigRedB_3" "BigRedB_1"
+const String buttonID = "BigRedB_3"; // "BigRedB_2" , "BigRedB_3" "BigRedB_1"
 
 // Consts and variables needed
 const int buttonPin = 2;            // Button is connected to digital pin 2
