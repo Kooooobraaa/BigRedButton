@@ -268,19 +268,23 @@ fun QuizGameScreen(
                     title = { Text("Scores") },
                     text = {
                         Column {
+                            Text("Round: $roundNumber", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
                             deviceStates.forEach { device ->
                                 val score = deviceScores[device.name] ?: 0
-                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
-                                    Text(device.name, modifier = Modifier.weight(1f))
-                                    IconButton(onClick = { deviceScores[device.name] = score - 1 }) {
-                                        Text("-")
-                                    }
-                                    Text(score.toString(), modifier = Modifier.width(32.dp), fontSize = 20.sp)
-                                    IconButton(onClick = { deviceScores[device.name] = score + 1 }) {
-                                        Text("+")
-                                    }
-                                    Button(onClick = { deviceScores[device.name] = 0 }, modifier = Modifier.padding(start = 8.dp)) {
-                                        Text("Reset")
+                                OutlinedCard(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(8.dp)
+                                    ) {
+                                        Text(device.name, modifier = Modifier.weight(1f))
+                                        //IconButton(onClick = {}) { Text("-") }
+                                        Text(score.toString(), modifier = Modifier.width(32.dp), fontSize = 20.sp)
+                                        //IconButton(onClick = {}) { Text("+") }
+                                        //Button(onClick = {}, modifier = Modifier.padding(start = 8.dp)) { Text("Reset") }
                                     }
                                 }
                             }
@@ -378,6 +382,7 @@ fun QuizGameScreen(
                             deviceScores[winnerId] = (deviceScores[winnerId] ?: 0) + 2
                             showAnswerDialog = false
                             winnerId = ""
+                            blockedDevices.value.clear()
                         }) {
                             Text("Yes")
                         }
@@ -398,19 +403,34 @@ fun QuizGameScreen(
 
             // Round info and next round button
             Column(
-                modifier = Modifier.align(Alignment.TopEnd).padding(16.dp),
+                modifier = Modifier.align(Alignment.TopEnd)
+                    .padding(end = 16.dp, top = 64.dp),
                 horizontalAlignment = Alignment.End
             ) {
                 Text("Round: $roundNumber", style = MaterialTheme.typography.titleMedium)
-                Button(onClick = {
-                    roundNumber++
-                    blockedDevices.value.clear()
-                    winnerId = ""
-                    hasStarted = false
-                    isTimerRunning = false
-                    timeLeftInMillis = initialTimeMillis
-                }, modifier = Modifier.padding(top = 8.dp)) {
-                    Text("Start Next Round")
+                Row {
+                    Button(onClick = {
+                        roundNumber = 1
+                        blockedDevices.value.clear()
+                        winnerId = ""
+                        hasStarted = false
+                        isTimerRunning = false
+                        timeLeftInMillis = initialTimeMillis
+                        deviceScores.keys.forEach { deviceScores[it] = 0 }
+                    }, modifier = Modifier.padding(top = 8.dp)) {
+                        Text("New Game")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = {
+                        roundNumber++
+                        blockedDevices.value.clear()
+                        winnerId = ""
+                        hasStarted = false
+                        isTimerRunning = false
+                        timeLeftInMillis = initialTimeMillis
+                    }, modifier = Modifier.padding(top = 8.dp)) {
+                        Text("Start Next Round")
+                    }
                 }
             }
         }
@@ -472,14 +492,21 @@ fun ScoreDialogPreview() {
         title = { Text("Scores") },
         text = {
             Column {
+                Text("Round: 1", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
                 deviceStates.forEach { device ->
                     val score = deviceScores[device.name] ?: 0
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(device.name, modifier = Modifier.weight(1f))
-                        IconButton(onClick = {}) { Text("-") }
-                        Text(score.toString(), modifier = Modifier.width(32.dp), fontSize = 20.sp)
-                        IconButton(onClick = {}) { Text("+") }
-                        Button(onClick = {}, modifier = Modifier.padding(start = 8.dp)) { Text("Reset") }
+                    OutlinedCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(8.dp)
+                        ) {
+                            Text(device.name, modifier = Modifier.weight(1f))
+                            Text(score.toString(), modifier = Modifier.width(32.dp), fontSize = 20.sp)
+                        }
                     }
                 }
             }
