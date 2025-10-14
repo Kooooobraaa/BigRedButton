@@ -90,6 +90,10 @@ fun QuizGameScreen(
     val blockedDevices = remember { mutableStateOf(mutableSetOf<String>()) }
     var roundNumber by remember { mutableIntStateOf(1) }
 
+    // Score settings
+    var correctScoreValue by remember { mutableIntStateOf(2) }
+    var incorrectScoreValue by remember { mutableIntStateOf(-1) }
+
     fun startTimer() {
         if (isPreparationEnabled) {
             isInPreparationPhase = true
@@ -304,6 +308,40 @@ fun QuizGameScreen(
                     title = { Text("Options") },
                     text = {
                         Column {
+                            // Score settings box
+                            OutlinedCard(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 12.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text("Score Settings", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("Correct answer", modifier = Modifier.weight(1f))
+                                        OutlinedTextField(
+                                            value = correctScoreValue.toString(),
+                                            onValueChange = { value ->
+                                                correctScoreValue = value.toIntOrNull() ?: correctScoreValue
+                                            },
+                                            singleLine = true,
+                                            modifier = Modifier.width(64.dp),
+                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                                        )
+                                    }
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("Incorrect answer", modifier = Modifier.weight(1f))
+                                        OutlinedTextField(
+                                            value = incorrectScoreValue.toString(),
+                                            onValueChange = { value ->
+                                                incorrectScoreValue = value.toIntOrNull() ?: incorrectScoreValue
+                                            },
+                                            singleLine = true,
+                                            modifier = Modifier.width(64.dp),
+                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                                        )
+                                    }
+                                }
+                            }
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Checkbox(
                                     checked = isPreparationEnabled,
@@ -378,8 +416,8 @@ fun QuizGameScreen(
                     text = { Text("Device: $winnerId") },
                     confirmButton = {
                         Button(onClick = {
-                            // Add 2 points for correct answer
-                            deviceScores[winnerId] = (deviceScores[winnerId] ?: 0) + 2
+                            // Add correctScoreValue points for correct answer
+                            deviceScores[winnerId] = (deviceScores[winnerId] ?: 0) + correctScoreValue
                             showAnswerDialog = false
                             winnerId = ""
                             blockedDevices.value.clear()
@@ -389,8 +427,8 @@ fun QuizGameScreen(
                     },
                     dismissButton = {
                         Button(onClick = {
-                            // Subtract 1 point for wrong answer and block device
-                            deviceScores[winnerId] = (deviceScores[winnerId] ?: 0) - 1
+                            // Add incorrectScoreValue points for wrong answer and block device
+                            deviceScores[winnerId] = (deviceScores[winnerId] ?: 0) + incorrectScoreValue
                             blockedDevices.value.add(winnerId)
                             showAnswerDialog = false
                             winnerId = ""
@@ -522,11 +560,42 @@ fun OptionsDialogPreview() {
     var preparationSeconds by remember { mutableIntStateOf(5) }
     var inputMinutes by remember { mutableStateOf("1") }
     var inputSeconds by remember { mutableStateOf("30") }
+    var correctScoreValue by remember { mutableIntStateOf(2) }
+    var incorrectScoreValue by remember { mutableIntStateOf(-1) }
     AlertDialog(
         onDismissRequest = {},
         title = { Text("Options") },
         text = {
             Column {
+                OutlinedCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text("Score Settings", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Correct answer", modifier = Modifier.weight(1f))
+                            OutlinedTextField(
+                                value = correctScoreValue.toString(),
+                                onValueChange = {},
+                                singleLine = true,
+                                modifier = Modifier.width(64.dp),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            )
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Incorrect answer", modifier = Modifier.weight(1f))
+                            OutlinedTextField(
+                                value = incorrectScoreValue.toString(),
+                                onValueChange = {},
+                                singleLine = true,
+                                modifier = Modifier.width(64.dp),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            )
+                        }
+                    }
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = isPreparationEnabled, onCheckedChange = { isPreparationEnabled = it })
                     Text("Enable Preparation Phase")
