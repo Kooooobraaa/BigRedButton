@@ -458,3 +458,97 @@ fun QuizGameScreenPreview() {
         )
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+fun ScoreDialogPreview() {
+    val deviceScores = remember { mutableStateMapOf("BigRedB_1" to 3, "BigRedB_2" to 1) }
+    val deviceStates = listOf(
+        DeviceState(device = null, name = "BigRedB_1", address = "00:11:22:33:44:55", isConnected = true),
+        DeviceState(device = null, name = "BigRedB_2", address = "Unavailable", isConnected = false)
+    )
+    AlertDialog(
+        onDismissRequest = {},
+        title = { Text("Scores") },
+        text = {
+            Column {
+                deviceStates.forEach { device ->
+                    val score = deviceScores[device.name] ?: 0
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(device.name, modifier = Modifier.weight(1f))
+                        IconButton(onClick = {}) { Text("-") }
+                        Text(score.toString(), modifier = Modifier.width(32.dp), fontSize = 20.sp)
+                        IconButton(onClick = {}) { Text("+") }
+                        Button(onClick = {}, modifier = Modifier.padding(start = 8.dp)) { Text("Reset") }
+                    }
+                }
+            }
+        },
+        confirmButton = { Button(onClick = {}) { Text("Close") } }
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun OptionsDialogPreview() {
+    var isPreparationEnabled by remember { mutableStateOf(true) }
+    var preparationSeconds by remember { mutableIntStateOf(5) }
+    var inputMinutes by remember { mutableStateOf("1") }
+    var inputSeconds by remember { mutableStateOf("30") }
+    AlertDialog(
+        onDismissRequest = {},
+        title = { Text("Options") },
+        text = {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = isPreparationEnabled, onCheckedChange = { isPreparationEnabled = it })
+                    Text("Enable Preparation Phase")
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Preparation Seconds: ")
+                    OutlinedTextField(
+                        value = preparationSeconds.toString(),
+                        onValueChange = {},
+                        singleLine = true,
+                        modifier = Modifier.width(48.dp),
+                        enabled = isPreparationEnabled,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Set round duration: ")
+                    OutlinedTextField(
+                        value = inputMinutes,
+                        onValueChange = {},
+                        label = { Text("Min") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.width(64.dp)
+                    )
+                    OutlinedTextField(
+                        value = inputSeconds,
+                        onValueChange = {},
+                        label = { Text("Sec") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.width(64.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = { Button(onClick = {}) { Text("Apply and Close") } }
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AnswerDialogPreview() {
+    val winnerId = "BigRedB_1"
+    AlertDialog(
+        onDismissRequest = {},
+        title = { Text("Was the answer correct?") },
+        text = { Text("Button: $winnerId") },
+        confirmButton = { Button(onClick = {}) { Text("Yes") } },
+        dismissButton = { Button(onClick = {}) { Text("No") } }
+    )
+}
