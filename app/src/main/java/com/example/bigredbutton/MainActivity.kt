@@ -23,6 +23,7 @@ import com.example.bigredbutton.ui.HomeScreen
 import com.example.bigredbutton.ui.QuizGameScreen
 import com.example.bigredbutton.ui.StopwatchScreen
 import com.example.bigredbutton.ui.theme.BigRedButtonTheme
+import com.example.bigredbutton.ui.ReflexGameScreen
 
 enum class Screen {
     Home,
@@ -30,7 +31,8 @@ enum class Screen {
     CountdownTimer,
     Stopwatch,
     ConnectButtons,
-    QuizGame
+    QuizGame,
+    ReflexGame
 }
 
 class MainActivity : ComponentActivity() {
@@ -93,7 +95,8 @@ fun AppNavigator(
             onCountdownSelected = { currentScreen = Screen.CountdownTimer },
             onStopwatchSelected = { currentScreen = Screen.Stopwatch },
             onNavigateBack = { currentScreen = Screen.Home },
-            onQuizGameSelected = { currentScreen = Screen.QuizGame }
+            onQuizGameSelected = { currentScreen = Screen.QuizGame },
+            onReflexGameSelected = { currentScreen = Screen.ReflexGame }
         )
         Screen.CountdownTimer -> CountdownTimerScreen(
             onNavigateBack = { currentScreen = Screen.GamesSelection },
@@ -106,6 +109,11 @@ fun AppNavigator(
             updateDeviceState = updateDeviceState
         )
         Screen.QuizGame -> QuizGameScreen(
+            onNavigateBack = { currentScreen = Screen.GamesSelection },
+            deviceStates = deviceStates,
+            updateDeviceState = updateDeviceState
+        )
+        Screen.ReflexGame -> ReflexGameScreen(
             onNavigateBack = { currentScreen = Screen.GamesSelection },
             deviceStates = deviceStates,
             updateDeviceState = updateDeviceState
