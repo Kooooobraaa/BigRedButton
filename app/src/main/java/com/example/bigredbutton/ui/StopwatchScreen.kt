@@ -52,6 +52,15 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
     var preparationCountdown by remember { mutableIntStateOf(0) }
     var isInPreparationPhase by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+    // Debug controls (same pattern as ReflexGameScreen)
+    var showDebugControls by remember { mutableStateOf(false) }
+    var debugSelectedDevice by remember { mutableStateOf(deviceStates.firstOrNull()?.name ?: "") }
+    var debugMenuExpanded by remember { mutableStateOf(false) }
+
+    // Ensure default debug selected device is valid
+    LaunchedEffect(deviceStates) {
+        if (debugSelectedDevice.isEmpty() && deviceStates.isNotEmpty()) debugSelectedDevice = deviceStates.first().name
+    }
 
     LaunchedEffect(isRunning) {
         if (isRunning) {
@@ -205,6 +214,50 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
                 }
             }
 
+            // Debug panel (visible if enabled in Options)
+            if (showDebugControls) {
+                OutlinedCard(modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)) {
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Text("Debug Controls", style = MaterialTheme.typography.titleMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Device selector dropdown
+                            Box {
+                                Button(onClick = { debugMenuExpanded = true }) {
+                                    Text(debugSelectedDevice.ifEmpty { "Select device" })
+                                }
+                                DropdownMenu(expanded = debugMenuExpanded, onDismissRequest = { debugMenuExpanded = false }) {
+                                    deviceStates.forEach { device ->
+                                        DropdownMenuItem(text = { Text(device.name) }, onClick = {
+                                            debugSelectedDevice = device.name
+                                            debugMenuExpanded = false
+                                        })
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Button(onClick = {
+                                if (debugSelectedDevice.isNotEmpty()) {
+                                    BluetoothMessageManager.debugInjectMessage(debugSelectedDevice)
+                                }
+                            }) {
+                                Text("Simulate Press")
+                            }
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            Button(onClick = { BluetoothMessageManager.clearMessage() }) {
+                                Text("Clear Message")
+                            }
+                        }
+                    }
+                }
+            }
+
             if (showOptionsDialog) {
                 AlertDialog(
                     onDismissRequest = { showOptionsDialog = false },
@@ -217,6 +270,11 @@ fun StopwatchScreen(onNavigateBack: () -> Unit,
                                     onCheckedChange = { isPreparationEnabled = it }
                                 )
                                 Text("Enable Preparation Phase")
+                            }
+                            // Debug toggle in Options
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(checked = showDebugControls, onCheckedChange = { showDebugControls = it })
+                                Text("Show Debug Controls")
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text("Preparation Seconds: ")

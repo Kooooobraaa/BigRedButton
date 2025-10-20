@@ -29,6 +29,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.example.bigredbutton.util.formatMillisecondsToTimeWithMillis
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Suppress("UNUSED_PARAMETER")
 @Composable
 fun QuizGameScreen(
     onNavigateBack: () -> Unit,
@@ -68,6 +69,15 @@ fun QuizGameScreen(
     var preparationSeconds by remember { mutableIntStateOf(3) }
     var preparationCountdown by remember { mutableIntStateOf(0) }
     var isInPreparationPhase by remember { mutableStateOf(false) }
+    // Debug controls (always declared; UI visibility is guarded by runtime isDebugBuild)
+    var showDebugControls by remember { mutableStateOf(false) }
+    var debugSelectedDevice by remember { mutableStateOf(deviceStates.firstOrNull()?.name ?: "") }
+    var debugMenuExpanded by remember { mutableStateOf(false) }
+    // ensure default debug selected device is valid
+    LaunchedEffect(deviceStates) {
+        if (debugSelectedDevice.isEmpty() && deviceStates.isNotEmpty()) debugSelectedDevice = deviceStates.first().name
+    }
+
     val coroutineScope = rememberCoroutineScope()
 
     val latestBluetoothMessage by BluetoothMessageManager.latestMessage.collectAsState()
@@ -87,7 +97,8 @@ fun QuizGameScreen(
     var showAnswerDialog by remember { mutableStateOf(false) }
 
     // Track devices that are blocked from winning until next round
-    val blockedDevices = remember { mutableStateOf(mutableSetOf<String>()) }
+    // prefer immutable Set inside state to avoid mutation-in-state warnings
+    val blockedDevices = remember { mutableStateOf(setOf<String>()) }
     var roundNumber by remember { mutableIntStateOf(1) }
 
     // Score settings
@@ -264,6 +275,52 @@ fun QuizGameScreen(
                         Text("Reset", color = resetTextColor, fontSize = 22.sp)
                     }
                 }
+
+                // Debug panel (visible only in debug builds)
+                // (uses isDebugBuild instead of BuildConfig.DEBUG to avoid unresolved references in preview/editor)
+                // Visible when the Show Debug Controls option is enabled (Options dialog controls checkbox is only shown in debug builds)
+                if (showDebugControls) {
+                    OutlinedCard(modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)) {
+                        Column(modifier = Modifier.padding(8.dp)) {
+                            Text("Debug Controls", style = MaterialTheme.typography.titleMedium)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                // Device selector dropdown
+                                Box {
+                                    Button(onClick = { debugMenuExpanded = true }) {
+                                        Text(debugSelectedDevice.ifEmpty { "Select device" })
+                                    }
+                                    DropdownMenu(expanded = debugMenuExpanded, onDismissRequest = { debugMenuExpanded = false }) {
+                                        deviceStates.forEach { device ->
+                                            DropdownMenuItem(text = { Text(device.name) }, onClick = {
+                                                debugSelectedDevice = device.name
+                                                debugMenuExpanded = false
+                                            })
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                Button(onClick = {
+                                    if (debugSelectedDevice.isNotEmpty()) {
+                                        BluetoothMessageManager.debugInjectMessage(debugSelectedDevice)
+                                    }
+                                }) {
+                                    Text("Simulate Press")
+                                }
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                Button(onClick = { BluetoothMessageManager.clearMessage() }) {
+                                    Text("Clear Message")
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             if (showScoreDialog) {
@@ -349,6 +406,11 @@ fun QuizGameScreen(
                                 )
                                 Text("Enable Preparation Phase")
                             }
+                            // Show the debug toggle in Options (match ColorWordGameScreen and ReflexGameScreen)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(checked = showDebugControls, onCheckedChange = { showDebugControls = it })
+                                Text("Show Debug Controls")
+                            }
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text("Preparation Seconds: ")
                                 OutlinedTextField(
@@ -420,7 +482,7 @@ fun QuizGameScreen(
                             deviceScores[winnerId] = (deviceScores[winnerId] ?: 0) + correctScoreValue
                             showAnswerDialog = false
                             winnerId = ""
-                            blockedDevices.value.clear()
+                            blockedDevices.value = emptySet()
                         }) {
                             Text("Yes")
                         }
@@ -429,7 +491,7 @@ fun QuizGameScreen(
                         Button(onClick = {
                             // Add incorrectScoreValue points for wrong answer and block device
                             deviceScores[winnerId] = (deviceScores[winnerId] ?: 0) + incorrectScoreValue
-                            blockedDevices.value.add(winnerId)
+                            blockedDevices.value = blockedDevices.value + winnerId
                             showAnswerDialog = false
                             winnerId = ""
                         }) {
@@ -449,7 +511,7 @@ fun QuizGameScreen(
                 Row {
                     Button(onClick = {
                         roundNumber = 1
-                        blockedDevices.value.clear()
+                        blockedDevices.value = emptySet()
                         winnerId = ""
                         hasStarted = false
                         isTimerRunning = false
@@ -461,7 +523,7 @@ fun QuizGameScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(onClick = {
                         roundNumber++
-                        blockedDevices.value.clear()
+                        blockedDevices.value = emptySet()
                         winnerId = ""
                         hasStarted = false
                         isTimerRunning = false

@@ -28,7 +28,8 @@ fun GamesSelectionScreen(
     onStopwatchSelected: () -> Unit,
     onNavigateBack: () -> Unit,
     onQuizGameSelected: () -> Unit,
-    onReflexGameSelected: () -> Unit
+    onReflexGameSelected: () -> Unit,
+    onColorWordSelected: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -74,6 +75,12 @@ fun GamesSelectionScreen(
             ) {
                 Text("Reflex Game")
             }
+            Button(
+                onClick = onColorWordSelected,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+            ) {
+                Text("Color Word")
+            }
         }
     }
 }
@@ -87,7 +94,8 @@ fun GamesSelectionScreenPreview() {
             onStopwatchSelected = {},
             onNavigateBack = {},
             onQuizGameSelected = {},
-            onReflexGameSelected = {}
+            onReflexGameSelected = {},
+            onColorWordSelected = {}
         )
     }
 }

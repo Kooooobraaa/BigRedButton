@@ -47,6 +47,17 @@ fun ReflexGameScreen(
     var debugSelectedDevice by remember { mutableStateOf(deviceStates.firstOrNull()?.name ?: "") }
     var debugMenuExpanded by remember { mutableStateOf(false) }
 
+    // Safe runtime check for debug build (avoids unresolved BuildConfig during static analysis)
+    val isDebugBuild = remember {
+        try {
+            val bc = Class.forName("com.example.bigredbutton.BuildConfig")
+            val f = bc.getField("DEBUG")
+            f.getBoolean(null)
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     // Game runtime state
     var isRunning by remember { mutableStateOf(false) }
     var isInPreparationPhase by remember { mutableStateOf(false) }
@@ -272,9 +283,8 @@ fun ReflexGameScreen(
                     val startText = if (isRunning) "Running" else "Start"
                     OutlinedButton(
                         onClick = {
-                            if (isRunning) {
-                                // do nothing or allow stop
-                            } else {
+                            if (isRunning) return@OutlinedButton
+                            else {
                                 startRounds()
                             }
                         },
@@ -394,7 +404,7 @@ fun ReflexGameScreen(
                                 )
                             }
 
-                            // Debug toggle in Options
+                            // Show the debug toggle in Options (match ColorWordGameScreen: always visible)
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Checkbox(checked = showDebugControls, onCheckedChange = { showDebugControls = it })
                                 Text("Show Debug Controls")
@@ -545,6 +555,7 @@ fun ReflexGameOptionsDialogPreview() {
                         )
                     }
 
+                    // Show the debug toggle in Options (match ColorWordGameScreen: always visible)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = true, onCheckedChange = {})
                         Text("Show Debug Controls")
