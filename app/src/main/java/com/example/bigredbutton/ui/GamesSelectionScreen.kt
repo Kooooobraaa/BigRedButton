@@ -29,7 +29,8 @@ fun GamesSelectionScreen(
     onNavigateBack: () -> Unit,
     onQuizGameSelected: () -> Unit,
     onReflexGameSelected: () -> Unit,
-    onColorWordSelected: () -> Unit
+    onColorWordSelected: () -> Unit,
+    onMemoryGameSelected: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -70,6 +71,12 @@ fun GamesSelectionScreen(
                 Text("Quiz Game")
             }
             Button(
+                onClick = onMemoryGameSelected,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+            ) {
+                Text("Memory Game")
+            }
+            Button(
                 onClick = onReflexGameSelected,
                 modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
             ) {
@@ -95,7 +102,8 @@ fun GamesSelectionScreenPreview() {
             onNavigateBack = {},
             onQuizGameSelected = {},
             onReflexGameSelected = {},
-            onColorWordSelected = {}
+            onColorWordSelected = {},
+            onMemoryGameSelected = {}
         )
     }
 }
