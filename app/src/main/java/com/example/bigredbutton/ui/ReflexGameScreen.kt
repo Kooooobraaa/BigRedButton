@@ -42,6 +42,11 @@ fun ReflexGameScreen(
     var minRandomSeconds by remember { mutableIntStateOf(1) }
     var maxRandomSeconds by remember { mutableIntStateOf(10) }
 
+    // Debug controls
+    var showDebugControls by remember { mutableStateOf(false) }
+    var debugSelectedDevice by remember { mutableStateOf(deviceStates.firstOrNull()?.name ?: "") }
+    var debugMenuExpanded by remember { mutableStateOf(false) }
+
     // Game runtime state
     var isRunning by remember { mutableStateOf(false) }
     var isInPreparationPhase by remember { mutableStateOf(false) }
@@ -57,6 +62,8 @@ fun ReflexGameScreen(
         deviceStates.forEach { device ->
             if (deviceScores[device.name] == null) deviceScores[device.name] = 0
         }
+        // ensure default debug selected device is valid
+        if (debugSelectedDevice.isEmpty() && deviceStates.isNotEmpty()) debugSelectedDevice = deviceStates.first().name
     }
 
     // Control flag to stop rounds loop
@@ -215,6 +222,51 @@ fun ReflexGameScreen(
                     )
                 }
 
+                // Debug panel (visible if enabled in Options)
+                if (showDebugControls) {
+                    OutlinedCard(modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)) {
+                        Column(modifier = Modifier.padding(8.dp)) {
+                            Text("Debug Controls", style = MaterialTheme.typography.titleMedium)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                // Device selector dropdown
+                                Box {
+                                    Button(onClick = { debugMenuExpanded = true }) {
+                                        Text(debugSelectedDevice.ifEmpty { "Select device" })
+                                    }
+                                    DropdownMenu(expanded = debugMenuExpanded, onDismissRequest = { debugMenuExpanded = false }) {
+                                        deviceStates.forEach { device ->
+                                            DropdownMenuItem(text = { Text(device.name) }, onClick = {
+                                                debugSelectedDevice = device.name
+                                                debugMenuExpanded = false
+                                            })
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                Button(onClick = {
+                                    if (debugSelectedDevice.isNotEmpty()) {
+                                        // Inject the message as if the device pressed its button
+                                        BluetoothMessageManager.debugInjectMessage(debugSelectedDevice)
+                                    }
+                                }) {
+                                    Text("Simulate Press")
+                                }
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                Button(onClick = { BluetoothMessageManager.clearMessage() }) {
+                                    Text("Clear Message")
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     val startBg = if (isRunning) Color(0xFFFFCC80) else Color(0xFF4CAF50)
                     val startText = if (isRunning) "Running" else "Start"
@@ -340,6 +392,12 @@ fun ReflexGameScreen(
                                     singleLine = true,
                                     modifier = Modifier.width(64.dp)
                                 )
+                            }
+
+                            // Debug toggle in Options
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(checked = showDebugControls, onCheckedChange = { showDebugControls = it })
+                                Text("Show Debug Controls")
                             }
                         }
                     },
@@ -485,6 +543,11 @@ fun ReflexGameOptionsDialogPreview() {
                             singleLine = true,
                             modifier = Modifier.width(64.dp)
                         )
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = true, onCheckedChange = {})
+                        Text("Show Debug Controls")
                     }
                 }
             },

@@ -64,4 +64,9 @@ object BluetoothMessageManager {
     fun clearMessage() {
         _latestMessage.value = null
     }
+
+    // Debug helper: inject a message into latestMessage for local testing without real Bluetooth hardware
+    fun debugInjectMessage(message: String) {
+        _latestMessage.value = message
+    }
 }
